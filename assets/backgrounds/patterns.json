@@ -1,0 +1,6 @@
+{
+  "patterns": [
+    { "file": "example-dots.png", "name": "예시 - 물방울" },
+    { "file": "example-lines.png", "name": "예시 - 사선 + 테두리" }
+  ]
+}

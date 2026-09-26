@@ -1,0 +1,5 @@
+{
+  "coasters": [
+    { "file": "example-coaster.png", "name": "예시 - 코스터" }
+  ]
+}

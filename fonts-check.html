@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>글꼴 확인 — Three Dots & a Dash</title>
+  <link rel="stylesheet" href="css/fonts.css" />
+  <style>
+    body { margin: 24px; font-family: system-ui, sans-serif; background: #f4f1f6; color: #222; }
+    h1 { font-size: 18px; margin-top: 30px; } h2 { font-size: 14px; margin: 18px 0 6px; }
+    canvas { background: #fff; border: 1px solid #ccc; display: block; }
+    code { background: #fff; padding: 1px 5px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>글꼴 확인 페이지</h1>
+  <p>시트를 그리는 방식(캔버스)으로 직접 그려서 확인해요. 제목 옆이 "✅ 사용 중"이면 파일이 제대로 읽힌 거예요.</p>
+  <label>테스트 문구 <input id="text" size="50" value="ABC abc 0123 한글 💜 🌹 🔫 👻 ☆ ♡ ♧ ♤" /></label>
+  <div id="out"></div>
+  <script type="module">
+    import { FONTS, FONT_ORDER, fontCss, fontStatus, loadFonts } from "./js/fonts.js";
+
+    const out = document.querySelector("#out");
+    const input = document.querySelector("#text");
+
+    function drawRow(label, font, text) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 900; canvas.height = 60;
+      const ctx = canvas.getContext("2d");
+      ctx.font = font; ctx.fillStyle = "#222"; ctx.textBaseline = "middle";
+      ctx.fillText(text, 10, 30);
+      const h2 = document.createElement("h2"); h2.textContent = label;
+      const note = document.createElement("code"); note.textContent = font;
+      out.append(h2, canvas, note);
+    }
+    const heading = (text) => { const h = document.createElement("h1"); h.textContent = text; out.append(h); };
+
+    async function run() {
+      out.replaceChildren();
+      const text = input.value;
+      await loadFonts(FONT_ORDER, text);
+      await document.fonts.ready;
+
+      heading("사이트에서 고를 수 있는 글꼴");
+      for (const id of FONT_ORDER) {
+        const def = FONTS[id];
+        const status = fontStatus(id);
+        const mark = status === "ready" ? "✅ 사용 중" : status === "system" ? "기본 글꼴" : "⚠ 파일 없음 (임시 글꼴)";
+        for (const weight of def.weights ?? ["regular"]) {
+          const w = weight === "bold" ? " — 굵게" : "";
+          drawRow(`${def.label}${w} — ${mark}`, fontCss(id, 28, weight), text);
+        }
+      }
+
+      heading("Mona 비교 (영수증에 쓸 조합 고르기)");
+      for (const family of ["TDAD Test Mona Main", "TDAD Test Color Emoji"]) {
+        await document.fonts.load(`28px "${family}"`, text).catch(() => []);
+        await document.fonts.load(`bold 28px "${family}"`, text).catch(() => []);
+      }
+      const combos = [
+        ["A. Mona12 통합판 하나만", '"TDAD Test Mona Main"'],
+        ["B. Mona12TextKR + Mona12Emoji (단색 도트 이모지) ← 현재 설정", '"TDAD Mona", "TDAD Mona Emoji"'],
+        ["C. Mona12TextKR + Mona12ColorEmoji (컬러 도트 이모지)", '"TDAD Mona", "TDAD Test Color Emoji"'],
+      ];
+      for (const [label, families] of combos) {
+        drawRow(label, `28px ${families}, monospace`, text);
+        drawRow(label + " — 굵게", `bold 28px ${families}, monospace`, text);
+      }
+      const check = (family) => ["💜", "🌹", "🔫", "👻"].map((e) => `${e}${document.fonts.check(`28px "${family}"`, e) ? "O" : "X"}`).join(" ");
+      const p = document.createElement("p");
+      p.textContent = `이모지 지원 — 단색: ${check("TDAD Mona Emoji")} · 컬러: ${check("TDAD Test Color Emoji")} · 통합판: ${check("TDAD Test Mona Main")}`;
+      out.append(p);
+
+      heading("로고 미리보기");
+      for (const id of ["puzzle", "puzzleOutline"]) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 900; canvas.height = 130;
+        const ctx = canvas.getContext("2d");
+        ctx.font = fontCss(id, 48); ctx.fillStyle = "#3A2E3F"; ctx.textBaseline = "top";
+        ["three dots", "& a dash"].forEach((line, i) => ctx.fillText(line, 10, 10 + i * 56));
+        const t = document.createElement("h2"); t.textContent = FONTS[id].label;
+        out.append(t, canvas);
+      }
+    }
+    input.addEventListener("change", run);
+    run();
+  </script>
+</body>
+</html>

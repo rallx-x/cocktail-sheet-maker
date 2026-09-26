@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Three Dots & a Dash — Result Sheet Maker</title>
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="panel" aria-label="편집 도구">
+      <header class="panel-header">
+        <p class="eyebrow">THREE DOTS &amp; A DASH</p>
+        <h1>Result Sheet Maker</h1>
+      </header>
+
+      <div class="panel-scroll">
+        <!-- Section order is locked to the sheet's layer order (bottom layer first):
+             배경 → MD 캐릭터 → 칵테일 카드 → SD → 영수증. New phases insert at their position. -->
+        <details class="section" data-section="background" open>
+          <summary>배경</summary>
+          <div class="section-body">
+          <div class="color-row">
+            <span class="field-label">배경색</span>
+            <input id="backgroundColorPicker" type="color" value="#ffffff" aria-label="배경색 고르기" />
+            <input id="backgroundColorHex" class="hex-input" type="text" value="#FFFFFF" maxlength="7" spellcheck="false" aria-label="배경색 HEX 코드" />
+          </div>
+          <p id="backgroundHexError" class="notice" hidden></p>
+
+          <div class="pattern-row">
+            <span class="field-label">패턴</span>
+            <select id="patternSelect" aria-label="패턴 고르기"></select>
+            <button id="patternReloadButton" class="icon-button" type="button" title="내 패턴 목록 새로고침" aria-label="내 패턴 목록 새로고침">↻</button>
+          </div>
+
+          <div id="builtinControls" class="sub-controls" hidden>
+            <div class="color-row">
+              <span class="field-label">패턴 색</span>
+              <input id="builtinColorPicker" type="color" value="#000000" aria-label="패턴 색 고르기" />
+              <input id="builtinColorHex" class="hex-input" type="text" value="#000000" maxlength="7" spellcheck="false" aria-label="패턴 색 HEX 코드" />
+            </div>
+            <p id="builtinHexError" class="notice" hidden></p>
+            <label class="range-row">
+              <span class="field-label">진하기</span>
+              <input id="builtinOpacity" type="range" min="0" max="100" step="1" value="15" />
+              <output id="builtinOpacityValue">15%</output>
+            </label>
+            <label class="range-row">
+              <span class="field-label">크기</span>
+              <input id="builtinScale" type="range" min="25" max="300" step="5" value="100" />
+              <output id="builtinScaleValue">100%</output>
+            </label>
+            <button id="reseedButton" class="reseed-button" type="button" hidden>🎲 배치 다시 뽑기</button>
+          </div>
+
+          <div id="fileControls" class="sub-controls" hidden>
+            <label class="check-row">
+              <input id="patternTint" type="checkbox" />
+              <span>패턴 색 바꾸기</span>
+            </label>
+            <div id="tintRow" class="color-row is-disabled">
+              <span class="field-label">패턴 색</span>
+              <input id="tintColorPicker" type="color" value="#000000" aria-label="패턴 색 고르기" disabled />
+              <input id="tintColorHex" class="hex-input" type="text" value="#000000" maxlength="7" spellcheck="false" aria-label="패턴 색 HEX 코드" disabled />
+            </div>
+            <p id="tintHexError" class="notice" hidden></p>
+          </div>
+
+          <p id="patternNotice" class="notice" hidden></p>
+          <p class="hint">기본 패턴은 사이트가 직접 그려서 항상 선명해요. 내 패턴은 assets/backgrounds 폴더에 PNG를 넣고 patterns.json에 이름을 추가한 뒤 ↻를 누르면 나타나요 (4000×3000px 권장).</p>
+
+            <details class="subsection" open>
+              <summary>브랜딩 (three dots &amp; a dash)</summary>
+              <div id="brandPanel" class="subsection-body"></div>
+            </details>
+          </div>
+        </details>
+
+        <!-- Sheet-level stickers (not owned by MD / SD). -->
+        <details class="section" data-section="stickers">
+          <summary>스티커</summary>
+          <div id="stickerPanel" class="section-body"></div>
+        </details>
+
+        <details class="section" data-section="md" open>
+          <summary>MD 캐릭터</summary>
+          <div class="section-body">
+            <div class="file-row">
+              <span class="field-label">캐릭터</span>
+              <label class="button-like small">
+                <span id="characterUploadLabel">올리기</span>
+                <input id="characterInput" type="file" accept="image/png,image/webp" />
+              </label>
+              <button id="characterRemoveButton" class="small" type="button" disabled>빼기</button>
+            </div>
+            <p id="characterName" class="file-name">—</p>
+
+            <div class="pattern-row">
+              <span class="field-label">코스터</span>
+              <select id="coasterSelect" aria-label="코스터 고르기"></select>
+              <button id="coasterReloadButton" class="icon-button" type="button" title="코스터 목록 새로고침" aria-label="코스터 목록 새로고침">↻</button>
+            </div>
+            <p id="coasterNotice" class="notice" hidden></p>
+            <div id="coasterPlate" class="plate-host" hidden></div>
+            <details class="subsection">
+              <summary>MD 배경 프레임</summary>
+              <div id="framePanel" class="subsection-body"></div>
+            </details>
+            <details class="subsection">
+              <summary>MD 장식</summary>
+              <div id="mdDecorPanel" class="subsection-body"></div>
+            </details>
+                        <details class="subsection">
+              <summary>컨페티</summary>
+              <div id="confettiPanel" class="subsection-body"></div>
+            </details>
+
+            <div class="sub-controls">
+              <div class="segmented" role="radiogroup" aria-label="편집 대상">
+                <span class="field-label">편집 대상</span>
+                <button id="targetCharacter" type="button" role="radio" aria-checked="true">캐릭터</button>
+                <button id="targetCoaster" type="button" role="radio" aria-checked="false">코스터</button>
+                <button id="targetFrame" type="button" role="radio" aria-checked="false">프레임</button>
+              </div>
+              <label class="range-row">
+                <span class="field-label">크기</span>
+                <input id="mdWidthRange" type="range" min="2" max="150" step="0.5" value="30" />
+                <input id="mdWidthNumber" class="num-input" type="number" min="2" max="150" step="0.5" value="30" aria-label="크기 (시트 너비 대비 %)" />
+              </label>
+              <button id="mdResetButton" class="reseed-button" type="button">위치 초기화</button>
+            </div>
+
+            <label class="check-row">
+              <input id="mdLinked" type="checkbox" checked />
+              <span>캐릭터 이동 시 코스터도 같이 이동</span>
+            </label>
+            <p class="hint">미리보기에서 드래그하면 이동, Ctrl + 휠로 크기를 바꿔요. 캐릭터나 코스터를 클릭하면 편집 대상이 바뀌어요. 크기는 시트 너비 대비 %예요. "코드로 그린 받침"을 고르면 받침 설정이 나타나요. PNG 코스터는 assets/coasters 폴더에 넣고 coasters.json에 이름을 추가한 뒤 ↻를 누르면 나타나요.</p>
+          </div>
+        </details>
+
+        <details class="section" data-section="card" open>
+          <summary>칵테일 카드</summary>
+          <div id="cardPanel" class="section-body"></div>
+        </details>
+
+        <details class="section" data-section="sd" open>
+          <summary>SD 캐릭터</summary>
+          <div class="section-body">
+            <div class="file-row">
+              <span class="field-label">SD</span>
+              <label class="button-like small">
+                <span id="sdCharacterUploadLabel">올리기</span>
+                <input id="sdCharacterInput" type="file" accept="image/png,image/webp" />
+              </label>
+              <button id="sdCharacterRemoveButton" class="small" type="button" disabled>빼기</button>
+            </div>
+            <p id="sdCharacterName" class="file-name">—</p>
+
+            <div class="sub-controls">
+              <div class="segmented" role="radiogroup" aria-label="편집 대상">
+                <span class="field-label">편집 대상</span>
+                <button id="targetSd" type="button" role="radio" aria-checked="true">SD</button>
+                <button id="targetDoily" type="button" role="radio" aria-checked="false">도일리</button>
+                <button id="targetTray" type="button" role="radio" aria-checked="false">트레이</button>
+              </div>
+              <label class="range-row">
+                <span class="field-label">크기</span>
+                <input id="sdWidthRange" type="range" min="2" max="150" step="0.5" value="10" />
+                <input id="sdWidthNumber" class="num-input" type="number" min="2" max="150" step="0.5" value="10" aria-label="크기 (시트 너비 대비 %)" />
+              </label>
+              <button id="sdResetButton" class="reseed-button" type="button">위치 초기화</button>
+            </div>
+
+            <label class="check-row">
+              <input id="sdLinked" type="checkbox" checked />
+              <span>SD 이동 시 도일리·트레이도 같이 이동 (도일리 이동 시 트레이도)</span>
+            </label>
+
+            <details class="subsection">
+              <summary>트레이</summary>
+              <div id="trayPanel" class="subsection-body"></div>
+            </details>
+
+            <p class="field-caption">도일리 받침 설정</p>
+            <div id="doilyPlate" class="plate-host"></div>
+          </div>
+        </details>
+
+        <details class="section" data-section="receipt" open>
+          <summary>영수증</summary>
+          <div id="receiptPanel" class="section-body"></div>
+        </details>
+        <details class="section" data-section="palette" open>
+          <summary>컬러 팔레트</summary>
+          <div id="palettePanel" class="section-body"></div>
+        </details>
+      </div>
+
+      <!-- Workspace-level actions: always reachable, never mixed with sheet properties. -->
+      <footer class="panel-footer" aria-label="프로젝트">
+        <button id="saveProjectButton" type="button">저장</button>
+        <label class="button-like">
+          <span>불러오기</span>
+          <input id="projectInput" type="file" accept="application/json,.json" />
+        </label>
+        <button id="exportButton" class="primary" type="button" disabled>PNG 내보내기</button>
+      </footer>
+    </aside>
+
+    <section class="workspace" aria-label="결과 시트 미리보기">
+      <div id="stage" class="stage">
+        <div id="previewFrame" class="preview-frame">
+          <canvas id="sheetCanvas" aria-label="결과 시트 캔버스"></canvas>
+          <!-- Editor overlay: guides + selection only. Never passed to renderSheet / export. -->
+          <canvas id="overlayCanvas" class="overlay" aria-hidden="true"></canvas>
+        </div>
+      </div>
+      <!-- Informational only (not sheet properties). -->
+      <p class="status-bar" aria-live="polite">
+        <span>시트 <b id="designSize">—</b></span>
+        <span>비율 <b id="designRatio">—</b></span>
+        <span>미리보기 <b id="previewScale">—</b></span>
+        <span>프로젝트 버전 <b id="projectVersion">—</b></span>
+      </p>
+    </section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

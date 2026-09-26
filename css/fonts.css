@@ -1,0 +1,30 @@
+/*
+  Local fonts (NOT bundled). Files live in assets/fonts/ (check each license first).
+  Family names ("TDAD …") are the app's internal aliases — js/fonts.js refers only to these.
+  Weight variants of one family share one alias with different font-weight values.
+  To check: open fonts-check.html.
+*/
+
+@font-face { font-family: "TDAD Puzzle"; src: url("../assets/fonts/Hakgyoansim Puzzle TTF Black.ttf"); font-display: block; }
+@font-face { font-family: "TDAD Puzzle Outline"; src: url("../assets/fonts/Hakgyoansim Puzzle TTF Outline.ttf"); font-display: block; }
+
+@font-face { font-family: "TDAD Loving U"; src: url("../assets/fonts/Cafe24Lovingu.ttf"); font-display: block; }
+@font-face { font-family: "TDAD Goun"; src: url("../assets/fonts/Cafe24Oneprettynight-v2.0.ttf"); font-display: block; }
+
+@font-face { font-family: "TDAD Mulgyeol"; src: url("../assets/fonts/HakgyoansimMulgyeolR.ttf"); font-weight: 400; font-display: block; }
+@font-face { font-family: "TDAD Mulgyeol"; src: url("../assets/fonts/HakgyoansimMulgyeolB.ttf"); font-weight: 700; font-display: block; }
+
+@font-face { font-family: "TDAD Moirai"; src: url("../assets/fonts/MoiraiOne-Regular.ttf"); font-display: block; }
+
+/* Mona12 — current choice: B (TextKR + monochrome pixel emoji). */
+@font-face { font-family: "TDAD Mona"; src: url("../assets/fonts/Mona12TextKR.ttf"); font-weight: 400; font-display: block; }
+@font-face { font-family: "TDAD Mona"; src: url("../assets/fonts/Mona12TextKR-Bold.ttf"); font-weight: 700; font-display: block; }
+@font-face { font-family: "TDAD Mona Emoji"; src: url("../assets/fonts/Mona12Emoji.ttf"); font-weight: 400; font-display: block; }
+@font-face { font-family: "TDAD Mona Emoji"; src: url("../assets/fonts/Mona12Emoji-Bold.ttf"); font-weight: 700; font-display: block; }
+
+@font-face { font-family: "TDAD Ahnchangho"; src: url("../assets/fonts/KCC-Ahnchangho.ttf"); font-display: block; }
+
+/* Comparison only (fonts-check.html): Mona options A and C. */
+@font-face { font-family: "TDAD Test Mona Main"; src: url("../assets/fonts/Mona12.ttf"); font-weight: 400; font-display: block; }
+@font-face { font-family: "TDAD Test Mona Main"; src: url("../assets/fonts/Mona12-Bold.ttf"); font-weight: 700; font-display: block; }
+@font-face { font-family: "TDAD Test Color Emoji"; src: url("../assets/fonts/Mona12ColorEmoji.ttf"); font-display: block; }
