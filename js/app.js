@@ -22,6 +22,8 @@ import { createColorField } from "./ui/controls.js";
 import { createFigureEditor } from "./editor/figure-editor.js";
 import { STRINGS } from "./strings.js";
 import { initTesterBuild } from "./tester/tester-notice.js";
+import { initTutorial } from "./tutorial/tutorial.js";
+import { initCreditOwner } from "./tester/credit-owner.js";
 
 initTesterBuild(); // tester build: app subtitle + one-time entry notice (editor UI only)
 
@@ -133,6 +135,9 @@ const mdEditor = createFigureEditor({
   getPreviewScale: () => previewCssScale,
   reportError,
 });
+
+initTutorial(); // tester build: "? 사용 방법" guided tour (editor UI only)
+initCreditOwner(); // tester build: "커미션주 표기" input for the sheet credit
 
 // ---------- Pattern library ----------
 

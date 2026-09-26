@@ -14,7 +14,7 @@ import { drawSd } from "./components/sd.js";
 import { drawBrand } from "./components/brand.js";
 import { fontCss, loadFonts } from "./fonts.js";
 import { getBuiltinPattern, minScaleFor } from "./patterns/builtin.js";
-import { SCALE_RANGE } from "./state.js";
+import { SCALE_RANGE, normalizeCreditOwner } from "./state.js";
 
 // Every font ID the current state actually renders with, plus the text to load glyphs for.
 export function fontNeeds(state) {
@@ -64,7 +64,7 @@ export async function waitForFonts(state) {
   if (typeof document === "undefined" || !document.fonts) return;
   const { ids, sample } = fontNeeds(state);
   ids.push(CREDIT.font); // tester-build credit (always drawn)
-  await loadFonts(ids, sample + CREDIT.text);
+  await loadFonts(ids, sample + creditText(state));
   // Cocktail Builder garnish: the color MONA emoji face (not a selectable text font, so loaded here)
   const garnish = state.components?.card?.image?.source === "builder" ? state.components.card.builder?.garnish ?? [] : [];
   if (garnish.length) await document.fonts.load(`32px ${GARNISH_FONT}`, garnish.map((g) => g.char).join("")).catch(() => []);
@@ -270,6 +270,11 @@ function backgroundUnder(state, r) {
 // Tester build creator credit: bottom-right corner of the SHEET, Mona text, reduced opacity, and a
 // light/dark color chosen from the actual background behind it (sampleBackground, any gradient direction).
 const CREDIT = { text: "@Sueyoiwife", font: "mona", size: 0.011, margin: 0.015, alpha: 0.6 };
+// "© {owner} · @Sueyoiwife" — right-aligned, so the handle's position is fixed and the owner grows leftward.
+function creditText(state) {
+  const owner = normalizeCreditOwner(state.design?.creditOwner);
+  return owner ? `\u00A9 ${owner} \u00B7 ${CREDIT.text}` : CREDIT.text;
+}
 function drawCredit(ctx, state, width, height) {
   const px = CREDIT.size * width;
   const m = CREDIT.margin * width;
@@ -277,7 +282,8 @@ function drawCredit(ctx, state, width, height) {
   ctx.font = fontCss(CREDIT.font, px);
   ctx.textAlign = "right";
   ctx.textBaseline = "alphabetic";
-  const w = ctx.measureText(CREDIT.text).width;
+  const text = creditText(state);
+  const w = ctx.measureText(text).width;
   const x = width - m;
   const y = height - m;
   const bg = sampleBackground(state.design, x - w / 2, y - px / 2);
@@ -285,6 +291,6 @@ function drawCredit(ctx, state, width, height) {
   const light = "#FFFFFF";
   ctx.fillStyle = contrast(dark, bg) >= contrast(light, bg) ? dark : light;
   ctx.globalAlpha = CREDIT.alpha;
-  ctx.fillText(CREDIT.text, x, y);
+  ctx.fillText(text, x, y);
   ctx.restore();
 }

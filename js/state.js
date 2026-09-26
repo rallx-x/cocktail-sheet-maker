@@ -370,6 +370,7 @@ export function createInitialState() {
       pattern: createDefaultPattern(), // Layer 0b: optional, drawn over the color
       colors: createDefaultSheetColors(), // v13 Sheet Colors (edit-time propagation only)
       theme: { id: null }, // display only; the renderer never reads it
+      creditOwner: "", // tester build: commissioner name for the sheet credit ("© {owner} · @Sueyoiwife")
     },
     layout: {}, // normalized component transforms are added from Phase 2 onward
     components: {
@@ -452,4 +453,11 @@ export function collectAssetIds(value, found = new Set()) {
     for (const child of Object.values(value)) collectAssetIds(child, found);
   }
   return found;
+}
+
+// Tester build: the commissioner credit name, enforced at every boundary (UI + load).
+export const CREDIT_OWNER_MAX = 40;
+export function normalizeCreditOwner(value) {
+  if (typeof value !== "string") return "";
+  return [...value.replace(/[\r\n\t\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim()].slice(0, CREDIT_OWNER_MAX).join("").trim();
 }

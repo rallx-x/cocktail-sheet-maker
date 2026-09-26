@@ -327,3 +327,4 @@ dialog.tester-notice::backdrop { background: rgba(10, 8, 14, .6); }
 .tester-notice p { margin: 0 0 8px; line-height: 1.55; font-size: 14px; }
 .tester-notice .tester-badge { margin: 0; font-size: 11px; letter-spacing: .14em; color: var(--accent); }
 .tester-notice button { margin-top: 12px; width: 100%; min-height: 40px; border-radius: 10px; cursor: pointer; }
+.credit-owner { display: grid; gap: 6px; margin: 14px 0 4px; padding-top: 12px; border-top: 1px solid var(--line); }
