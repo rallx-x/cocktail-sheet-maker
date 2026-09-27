@@ -13,6 +13,33 @@ export function mdAreaRect(width, height) {
   return { x: a.x * width, y: a.y * height, w: a.width * width, h: a.height * height };
 }
 
+// v16: the persisted MD viewport (fractions). Falls back to the layout's MD area for callers that
+// only have a bare md object without one (never the case after load / migration).
+export function viewportOf(md) {
+  return md?.viewport ?? { ...sheetLayout.mdArea, clip: false };
+}
+
+export function viewportRect(md, width, height) {
+  const v = viewportOf(md);
+  return { x: v.x * width, y: v.y * height, w: v.width * width, h: v.height * height };
+}
+
+export function intersectRect(a, b) {
+  const x0 = Math.max(a.x, b.x);
+  const y0 = Math.max(a.y, b.y);
+  const x1 = Math.min(a.x + a.w, b.x + b.w);
+  const y1 = Math.min(a.y + a.h, b.y + b.h);
+  return x1 > x0 && y1 > y0 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+}
+
+// What is actually visible of the character: the full rect, or rect ∩ viewport while clipping.
+// null = no character, or nothing of it is visible.
+export function visibleCharacterRect(md, width, height) {
+  const r = characterRect(md?.character, width, height);
+  if (!r || !viewportOf(md).clip) return r;
+  return intersectRect(r, viewportRect(md, width, height));
+}
+
 // Character: anchor = bottom-center.
 export function characterRect(character, width, height) {
   if (!character?.asset) return null;
@@ -37,8 +64,9 @@ export function clampWidth(value) {
 
 // Default placement for a newly added character: feet at the area's bottom-center,
 // fitted to 85% of the area height (and never wider than 90% of the area).
-export function defaultCharacterPlacement(assetSize, width, height) {
-  const a = sheetLayout.mdArea;
+// v16: the area is the project's viewport when given (else the layout MD area).
+export function defaultCharacterPlacement(assetSize, width, height, viewport = null) {
+  const a = viewport ?? sheetLayout.mdArea;
   const areaW = a.width * width;
   const areaH = a.height * height;
   const aspect = assetSize.height / assetSize.width;
@@ -52,8 +80,8 @@ export function defaultCharacterPlacement(assetSize, width, height) {
 
 // Default placement for a newly chosen coaster: centered under the character's feet
 // if there is a character, else at the area's bottom-center; 80% of the area width.
-export function defaultCoasterPlacement(character) {
-  const a = sheetLayout.mdArea;
+export function defaultCoasterPlacement(character, viewport = null) {
+  const a = viewport ?? sheetLayout.mdArea;
   return {
     x: character?.asset ? character.x : a.x + a.width / 2,
     y: character?.asset ? character.y : a.y + a.height * 0.94,
@@ -61,6 +89,33 @@ export function defaultCoasterPlacement(character) {
   };
 }
 
+// v16 one-shot composition actions. They only return character { x, y, width } (sheet space);
+// the caller writes them like any other character move (linked coaster follows the feet).
+export const FLOOR_MARGIN = 0.06; // same floor gap as the default placement (feet at 94%)
+export const FILL_ALIGN = "top"; // tuning: "top" | "center" (see the comparison sheet)
+
+// Fit (contain): the whole image inside the viewport, centered, feet on the floor line.
+export function fitCharacterPlacement(assetSize, width, height, viewport) {
+  const v = viewport;
+  const vw = v.width * width;
+  const vh = v.height * height * (1 - FLOOR_MARGIN);
+  const aspect = assetSize.height / assetSize.width;
+  const w = Math.min(vw, vh / aspect);
+  return { x: v.x + v.width / 2, y: v.y + v.height * (1 - FLOOR_MARGIN), width: clampWidth(w / width) };
+}
+
+// Fill (cover): the viewport fully covered, centered horizontally. align "top" keeps the top edge
+// (heads) and cuts at the bottom; "center" cuts evenly.
+export function fillCharacterPlacement(assetSize, width, height, viewport, align = FILL_ALIGN) {
+  const v = viewport;
+  const vw = v.width * width;
+  const vh = v.height * height;
+  const aspect = assetSize.height / assetSize.width;
+  const w = clampWidth(Math.max(vw, vh / aspect) / width) * width;
+  const h = w * aspect;
+  const top = align === "center" ? v.y * height + (vh - h) / 2 : v.y * height;
+  return { x: v.x + v.width / 2, y: (top + h) / height, width: w / width };
+}
 // Layer 1 — MD: coaster first, character on top. Images are pre-resolved by the renderer.
 export function drawMd(ctx, md, images, width, height, renderScale) {
   // v11 order: back confetti → frame → decor → coaster → FRONT confetti → character
@@ -85,5 +140,16 @@ export function drawMd(ctx, md, images, width, height, renderScale) {
   drawConfetti(ctx, md.confetti?.front, width, height);
 
   const character = characterRect(md.character, width, height);
-  if (character && images.character) ctx.drawImage(images.character, character.x, character.y, character.w, character.h);
+  if (!character || !images.character) return;
+  // v16: only the character artwork is cut at the viewport (frame / decor / coaster / confetti never)
+  const clip = viewportOf(md).clip;
+  if (clip) {
+    const v = viewportRect(md, width, height);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(v.x, v.y, v.w, v.h);
+    ctx.clip();
+  }
+  ctx.drawImage(images.character, character.x, character.y, character.w, character.h);
+  if (clip) ctx.restore();
 }

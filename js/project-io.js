@@ -9,6 +9,8 @@ import {
   PROJECT_VERSION,
   BUILTIN_DEFAULTS,
   MD_WIDTH_RANGE,
+  VIEWPORT_MIN,
+  createDefaultViewport,
   SCALE_RANGE,
   collectAssetIds,
   createDefaultBrand,
@@ -16,7 +18,6 @@ import {
   createDefaultMd,
   LEGACY_LAYOUT_V10,
   createDefaultCard,
-  normalizeCreditOwner,
   createDefaultBuilder,
   createDefaultSheetColors,
   createDefaultConfetti,
@@ -303,6 +304,17 @@ const migrations = new Map([
       return project;
     },
   ],
+  // v15 → v16: md.viewport (the MD area, persisted). Migrated files get clip:false → nothing is cut and
+  // frame fit keeps the full character rect → identical exports. Clipping is an explicit opt-in.
+  [
+    15,
+    (project) => {
+      const md = project.components?.md;
+      if (md && typeof md === "object") md.viewport = createDefaultViewport(false);
+      project.projectVersion = 16;
+      return project;
+    },
+  ],
 ]);
 
 // The card exactly as createDefaultCard produced it up to v12 (center-anchored, one `items` list).
@@ -398,7 +410,6 @@ export async function deserializeProject(raw) {
   restored.design.colors = normalizeSheetColors(migrated.design?.colors);
   const themeId = migrated.design?.theme?.id;
   restored.design.theme = { id: typeof themeId === "string" && getTheme(themeId) ? themeId : null };
-  restored.design.creditOwner = normalizeCreditOwner(migrated.design?.creditOwner); // tester build
   restored.components.md = normalizeMd(migrated.components?.md);
   restored.components.sd = normalizeSd(migrated.components?.sd);
   restored.components.brand = normalizeBrand(migrated.components?.brand);
@@ -503,10 +514,25 @@ function normalizeMd(raw) {
   return {
     character: normalizeCharacter(raw.character),
     coaster,
+    viewport: normalizeViewport(raw.viewport),
     frame: normalizeFrame(raw.frame),
     decor: normalizeMdDecor(raw.decor),
     confetti: { back: normalizeConfetti(raw.confetti?.back, "back"), front: normalizeConfetti(raw.confetti?.front, "front") },
     linked: raw.linked !== false,
+  };
+}
+
+function normalizeViewport(raw) {
+  const base = createDefaultViewport();
+  if (!raw || typeof raw !== "object") return base;
+  const width = clamp(finite(raw.width, base.width), VIEWPORT_MIN, 1);
+  const height = clamp(finite(raw.height, base.height), VIEWPORT_MIN, 1);
+  return {
+    x: clamp(finite(raw.x, base.x), 0, 1 - width),
+    y: clamp(finite(raw.y, base.y), 0, 1 - height),
+    width,
+    height,
+    clip: typeof raw.clip === "boolean" ? raw.clip : base.clip,
   };
 }
 

@@ -3,11 +3,12 @@ import { bannerRect } from "../decor/banner.js";
 import { stickerRect } from "../components/stickers.js";
 import { sheetLayout } from "../state.js";
 import {
-  characterRect,
   coasterRect,
   defaultCharacterPlacement,
   defaultCoasterPlacement,
-  mdAreaRect,
+  viewportOf,
+  viewportRect,
+  visibleCharacterRect,
 } from "../components/md.js";
 import {
   defaultDoilyPlacement,
@@ -126,8 +127,9 @@ export function createAdapters() {
       get: (s) => c(s).md.character,
       exists: (s) => Boolean(c(s).md.character.asset),
       has: (s) => Boolean(c(s).md.character.asset),
-      rect: (s) => characterRect(c(s).md.character, W(s), H(s)),
-      home: (s) => defaultCharacterPlacement(c(s).md.character.asset, W(s), H(s)),
+      // v16: hit-testing / selection use what is visible (rect ∩ viewport while clipping)
+      rect: (s) => visibleCharacterRect(c(s).md, W(s), H(s)),
+      home: (s) => defaultCharacterPlacement(c(s).md.character.asset, W(s), H(s), viewportOf(c(s).md)),
     },
     {
       id: "md.coaster",
@@ -135,7 +137,7 @@ export function createAdapters() {
       exists: (s) => c(s).md.coaster.source !== "none",
       has: (s) => c(s).md.coaster.source !== "none",
       rect: (s) => coasterRect(c(s).md.coaster, coasterSize(c(s).md.coaster), W(s), H(s)),
-      home: (s) => defaultCoasterPlacement(c(s).md.character),
+      home: (s) => defaultCoasterPlacement(c(s).md.character, viewportOf(c(s).md)),
     },
   ]);
 
@@ -284,6 +286,6 @@ export function createAdapters() {
       ...confettiAdapters,
       ...stickerAdapters(state, "back"),
     ],
-    guides: [(s) => mdAreaRect(W(s), H(s)), (s) => sdAreaRect(W(s), H(s))],
+    guides: [(s) => viewportRect(c(s).md, W(s), H(s)), (s) => sdAreaRect(W(s), H(s))],
   };
 }

@@ -15,13 +15,14 @@ import { createModeNav } from "./mode-nav.js";
 import { createSheetColorsPanel, createThemeStrip } from "./theme-panel.js";
 import { createBackgroundPanel } from "./background-panel.js";
 import { stickerLibrary } from "../library.js";
-import { defaultCharacterPlacement, defaultCoasterPlacement } from "../components/md.js";
+import { defaultCharacterPlacement, defaultCoasterPlacement, viewportOf } from "../components/md.js";
 import { defaultSdCharacterPlacement } from "../components/sd.js";
 import { bindRange, createColorField, el } from "../ui/controls.js";
 import { STRINGS } from "../strings.js";
 import { createAdapters } from "./adapters.js";
 import { createInteraction } from "./interaction.js";
 import { createPlatePanel } from "./plate-panel.js";
+import { createMdViewportPanel } from "./md-viewport-panel.js";
 
 // MD + SD editing: one interaction controller (pointer / wheel / selection) plus one panel
 // binder per section. Editor-only state (selection, remembered plate) is never saved.
@@ -124,7 +125,13 @@ export function createFigureEditor({ getState, updateState, getPreviewScale, rep
     input: $("#characterInput"),
     remove: $("#characterRemoveButton"),
     get: (s) => md(s).character,
-    place: (asset, draft) => defaultCharacterPlacement(asset, draft.design.width, draft.design.height),
+    place: (asset, draft) => defaultCharacterPlacement(asset, draft.design.width, draft.design.height, viewportOf(md(draft))),
+  });
+  // v16: MD viewport actions (Fit / Fill / Reset, position, clip), built right under the character row
+  const mdViewportPanel = createMdViewportPanel($("#characterName"), {
+    getState,
+    updateState,
+    getAdapter: () => interaction.get("md.character"),
   });
   const mdControls = bindFigureControls({
     section: "md",
@@ -212,7 +219,7 @@ export function createFigureEditor({ getState, updateState, getPreviewScale, rep
       const m = md(draft);
       const placement = m.coaster.source !== "none"
         ? { x: m.coaster.x, y: m.coaster.y, width: m.coaster.width } // swapping keeps placement
-        : defaultCoasterPlacement(m.character); // the first coaster goes under the character
+        : defaultCoasterPlacement(m.character, viewportOf(m)); // the first coaster goes under the character
       if (value === "plate") m.coaster = { source: "plate", plate: lastCoasterPlate ?? createCoasterPreset(makeSeed()), ...placement };
       else if (value.startsWith("file:")) m.coaster = { source: "file", file: value.slice(5), ...placement };
       else m.coaster = { source: "none" };
@@ -313,6 +320,7 @@ export function createFigureEditor({ getState, updateState, getPreviewScale, rep
     $("#coasterNotice").textContent = notice;
 
     mdControls.sync(state);
+    mdViewportPanel.sync(state);
     sdControls.sync(state);
     coasterPlatePanel.sync(state);
     doilyPlatePanel.sync(state);

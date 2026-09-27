@@ -1,5 +1,5 @@
 import { registerDraftFinalizer } from "../state.js";
-import { characterRect, coasterRect } from "../components/md.js";
+import { characterRect, coasterRect, viewportOf, visibleCharacterRect } from "../components/md.js";
 import { coasterLibrary } from "../library.js";
 
 // "캐릭터에 맞춤" (frame.fit). ONE draft finalizer covers every path that changes the MD character /
@@ -22,6 +22,7 @@ function inputsKey(state) {
   return JSON.stringify([
     state.design.width, state.design.height, md.frame.shape, md.frame.fit.padding,
     c.asset ? [c.asset.width, c.asset.height, c.x, c.y, c.width] : null,
+    viewportOf(md), // v16: the visible (clipped) character rect depends on the viewport + clip
     k.source, k.x, k.y, k.width, k.file ?? null, k.plate?.aspect ?? null, coasterSize(k),
   ]);
 }
@@ -32,7 +33,11 @@ export function fittedGeometry(state) {
   const W = state.design.width;
   const H = state.design.height;
   const md = state.components.md;
-  const rects = [characterRect(md.character, W, H), coasterRect(md.coaster, coasterSize(md.coaster), W, H)].filter(Boolean);
+  // v16: while clipping, fit the VISIBLE character (rect ∩ viewport). A character that exists but is
+  // entirely clipped away → keep the stored frame (never expand to the whole viewport).
+  const visible = visibleCharacterRect(md, W, H);
+  if (characterRect(md.character, W, H) && !visible) return null;
+  const rects = [visible, coasterRect(md.coaster, coasterSize(md.coaster), W, H)].filter(Boolean);
   if (!rects.length) return null; // nothing to fit: keep the stored geometry
   const x0 = Math.min(...rects.map((r) => r.x));
   const y0 = Math.min(...rects.map((r) => r.y));
