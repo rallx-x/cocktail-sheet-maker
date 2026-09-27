@@ -21,10 +21,10 @@ export function createMdViewportPanel(host, { getState, updateState, getAdapter 
   const xRow = rangeRow("좌우 위치", { min: -50, max: 150, step: 1 });
   const yRow = rangeRow("위아래 위치", { min: -50, max: 200, step: 1 });
   const clipInput = el("input", { type: "checkbox" });
-  const clipRow = el("label", { class: "check-row" }, clipInput, el("span", { text: "MD 영역 밖 잘라내기" }));
+  const clipRow = el("label", { class: "check-row" }, clipInput, el("span", { text: "프레임 밖으로 나간 부분 잘라내기" }));
   const hint = el("p", {
     class: "hint",
-    text: "맞추기: 그림 전체가 점선 영역 안에 들어가요. 채우기: 점선 영역을 꽉 채우고 넘치는 부분은 잘려요. 위치는 점선 영역 기준 %예요(50 = 가운데, 위아래는 발 위치).",
+    text: "맞추기: 그림 전체가 점선 영역 안에 들어가요. 채우기: 점선 영역을 꽉 채우고 넘치는 부분은 잘려요. 잘라내기를 켜면 캐릭터가 MD 배경 프레임 모양 안에서만 보여요(프레임을 끄면 점선 영역 기준). 위치는 점선 영역 기준 %예요(50 = 가운데, 위아래는 발 위치).",
   });
   const details = el(
     "details",

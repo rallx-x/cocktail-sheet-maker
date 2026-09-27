@@ -160,6 +160,28 @@ export function drawFrame(ctx, frame, rect) {
   return { art, artR };
 }
 
+// v16: the area the MD character is cut to when clipping is on and the frame is shown: the frame's
+// artwork area (inside molding / mat, same insets as drawFrame) minus half the border line, so the
+// character never crosses the frame edge. Geometry only; drawFrame itself is unchanged.
+export function frameClipArea(frame, rect) {
+  const w = rect.w;
+  const b = frame.border;
+  let art = rect;
+  let artR = frame.radius * w;
+  if (["scallop", "stitch", "picture", "pictureMat"].includes(b.style)) {
+    const mw = b.molding.width * w;
+    art = insetBox(art, mw);
+    artR = Math.max(0, artR - mw);
+    if (b.style === "pictureMat") {
+      const matW = b.mat.width * w;
+      art = insetBox(art, matW);
+      artR = Math.max(0, artR - matW);
+    }
+  }
+  const half = (b.width * w) / 2;
+  return { shape: frame.shape, box: insetBox(art, half), r: Math.max(0, artR - half) };
+}
+
 // Clip helper for decorations that must stay inside the artwork area (e.g. valance).
 export function clipToShape(ctx, shape, box, r) {
   ctx.beginPath();

@@ -1,5 +1,5 @@
 import { registerDraftFinalizer } from "../state.js";
-import { characterRect, coasterRect, viewportOf, visibleCharacterRect } from "../components/md.js";
+import { characterRect, coasterRect, fitCharacterRect, viewportOf } from "../components/md.js";
 import { coasterLibrary } from "../library.js";
 
 // "캐릭터에 맞춤" (frame.fit). ONE draft finalizer covers every path that changes the MD character /
@@ -35,7 +35,7 @@ export function fittedGeometry(state) {
   const md = state.components.md;
   // v16: while clipping, fit the VISIBLE character (rect ∩ viewport). A character that exists but is
   // entirely clipped away → keep the stored frame (never expand to the whole viewport).
-  const visible = visibleCharacterRect(md, W, H);
+  const visible = fitCharacterRect(md, W, H);
   if (characterRect(md.character, W, H) && !visible) return null;
   const rects = [visible, coasterRect(md.coaster, coasterSize(md.coaster), W, H)].filter(Boolean);
   if (!rects.length) return null; // nothing to fit: keep the stored geometry

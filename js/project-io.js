@@ -18,6 +18,7 @@ import {
   createDefaultMd,
   LEGACY_LAYOUT_V10,
   createDefaultCard,
+  normalizeCreditOwner,
   createDefaultBuilder,
   createDefaultSheetColors,
   createDefaultConfetti,
@@ -410,6 +411,7 @@ export async function deserializeProject(raw) {
   restored.design.colors = normalizeSheetColors(migrated.design?.colors);
   const themeId = migrated.design?.theme?.id;
   restored.design.theme = { id: typeof themeId === "string" && getTheme(themeId) ? themeId : null };
+  restored.design.creditOwner = normalizeCreditOwner(migrated.design?.creditOwner); // tester build
   restored.components.md = normalizeMd(migrated.components?.md);
   restored.components.sd = normalizeSd(migrated.components?.sd);
   restored.components.brand = normalizeBrand(migrated.components?.brand);

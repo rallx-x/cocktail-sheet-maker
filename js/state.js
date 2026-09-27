@@ -55,7 +55,7 @@ export const LEGACY_LAYOUT_V10 = {
 export function createDefaultBrand(visible = true) {
   return {
     visible,
-    lines: ["three dots", "& a dash"],
+    lines: ["cocktail", "sheet maker"], // tester build default (the commission brand is not stamped on testers' sheets)
     color: "#3A2E3F",
     font: FONT_DEFAULTS.brand,
     colorMode: "manual", // "auto": frame line color when over the MD frame, else background-derived
@@ -228,13 +228,13 @@ export function createDefaultReceipt(visible = true, a = sheetLayout.receiptArea
     board: { style: "clipboard", color: "#8E86A6", border: 0.006, clipColor: "#C9C3D6" },
     paper: { color: "#FFFDF8", inset: 0.06, top: 0.08, edge: "zigzag", lineColor: "#CFC6D8" },
     title: text("RECEIPT", FONT_DEFAULTS.brand, 0.075, { letterSpacing: 0.18 }),
-    subtitle: text("FOR YOUR ANOTHER SIDE.", FONT_DEFAULTS.receipt, 0.027, { letterSpacing: 0.08 }),
-    header: { date: "2026.10.01", client: "CREPE", server: "THREE DOTS & A DASH" },
+    subtitle: text("TESTER BUILD", FONT_DEFAULTS.receipt, 0.027, { letterSpacing: 0.08 }),
+    header: { date: "2026.10.01", client: "GUEST", server: "SHEET MAKER" },
     body: { font: FONT_DEFAULTS.receipt, color: "#3A2E3F", size: 0.032, letterSpacing: 0, leaderColor: "#B7A8C4" },
     sections: [],
     barcode: { on: true, color: "#3A2E3F" },
     code: { anniversary: "", random: newReceiptCode(), font: FONT_DEFAULTS.receipt, color: "#3A2E3F", size: 0.04 },
-    footer: text("THANK YOU. SEE YOU AT THE NEXT POUR.", FONT_DEFAULTS.receipt, 0.027, { letterSpacing: 0.04 }),
+    footer: text("THANK YOU FOR TESTING!", FONT_DEFAULTS.receipt, 0.027, { letterSpacing: 0.04 }),
   };
 }
 
@@ -380,6 +380,7 @@ export function createInitialState() {
       pattern: createDefaultPattern(), // Layer 0b: optional, drawn over the color
       colors: createDefaultSheetColors(), // v13 Sheet Colors (edit-time propagation only)
       theme: { id: null }, // display only; the renderer never reads it
+      creditOwner: "", // tester build: commissioner name for the sheet credit ("© {owner} · @Sueyoiwife")
     },
     layout: {}, // normalized component transforms are added from Phase 2 onward
     components: {
@@ -462,4 +463,11 @@ export function collectAssetIds(value, found = new Set()) {
     for (const child of Object.values(value)) collectAssetIds(child, found);
   }
   return found;
+}
+
+// Tester build: the commissioner credit name, enforced at every boundary (UI + load).
+export const CREDIT_OWNER_MAX = 40;
+export function normalizeCreditOwner(value) {
+  if (typeof value !== "string") return "";
+  return [...value.replace(/[\r\n\t\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim()].slice(0, CREDIT_OWNER_MAX).join("").trim();
 }

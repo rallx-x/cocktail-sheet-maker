@@ -1,7 +1,8 @@
 import { MD_WIDTH_RANGE, sheetLayout } from "../state.js";
 import { drawPlate, plateRect } from "./plate.js";
 import { boxRect } from "./boxes.js";
-import { drawFrame } from "./frame.js";
+import { drawFrame, frameClipArea } from "./frame.js";
+import { traceShape } from "./shapes.js";
 import { drawMdDecor } from "../decor/md-decor.js";
 import { drawConfetti } from "./confetti.js";
 
@@ -32,9 +33,28 @@ export function intersectRect(a, b) {
   return x1 > x0 && y1 > y0 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
 }
 
-// What is actually visible of the character: the full rect, or rect ∩ viewport while clipping.
-// null = no character, or nothing of it is visible.
+// Where the character is cut while clipping is on: inside the MD background frame when it is shown
+// (its shape, e.g. the arch), else the viewport rect. null = no clipping.
+export function characterClip(md, width, height) {
+  if (!viewportOf(md).clip) return null;
+  if (md.frame?.visible) {
+    const area = frameClipArea(md.frame, boxRect(md.frame, width, height));
+    if (area.box.w > 0 && area.box.h > 0) return area;
+  }
+  return { shape: "rect", box: viewportRect(md, width, height), r: 0 };
+}
+
+// What is actually visible of the character (bounding box): the full rect, or rect ∩ clip area.
+// null = no character, or nothing of it is visible. Used for hit-testing / selection.
 export function visibleCharacterRect(md, width, height) {
+  const r = characterRect(md?.character, width, height);
+  const clip = r && characterClip(md, width, height);
+  return clip ? intersectRect(r, clip.box) : r;
+}
+
+// The character rect the frame FIT follows: rect ∩ viewport while clipping (never the frame itself,
+// which would make the fitted frame only ever shrink).
+export function fitCharacterRect(md, width, height) {
   const r = characterRect(md?.character, width, height);
   if (!r || !viewportOf(md).clip) return r;
   return intersectRect(r, viewportRect(md, width, height));
@@ -141,13 +161,13 @@ export function drawMd(ctx, md, images, width, height, renderScale) {
 
   const character = characterRect(md.character, width, height);
   if (!character || !images.character) return;
-  // v16: only the character artwork is cut at the viewport (frame / decor / coaster / confetti never)
-  const clip = viewportOf(md).clip;
+  // v16: only the character artwork is cut — to the frame shape, or the viewport without a frame
+  // (frame / decor / coaster / confetti are never cut)
+  const clip = characterClip(md, width, height);
   if (clip) {
-    const v = viewportRect(md, width, height);
     ctx.save();
     ctx.beginPath();
-    ctx.rect(v.x, v.y, v.w, v.h);
+    traceShape(ctx, clip.shape, clip.box, clip.r);
     ctx.clip();
   }
   ctx.drawImage(images.character, character.x, character.y, character.w, character.h);
