@@ -1,6 +1,6 @@
-import { registerAsset, removeAsset } from "../assets.js";
+import { registerAsset } from "../assets.js";
 import { coasterLibrary } from "../library.js";
-import { MD_WIDTH_RANGE, collectAssetIds } from "../state.js";
+import { MD_WIDTH_RANGE, releaseUnusedAssets } from "../state.js";
 import { makeSeed } from "../patterns/prng.js";
 import { copyPlateDesign, createCoasterPreset } from "../components/plate.js";
 import { createBrandPanel, createTrayPanel } from "./box-panels.js";
@@ -38,6 +38,7 @@ export function createFigureEditor({ getState, updateState, getPreviewScale, rep
   const interaction = createInteraction({
     overlay: $("#overlayCanvas"),
     sheet: $("#sheetCanvas"),
+    stage: $("#stage"),
     getAdapters,
     guides,
     getState,
@@ -53,9 +54,8 @@ export function createFigureEditor({ getState, updateState, getPreviewScale, rep
     },
   });
 
-  const releaseIfUnreferenced = (assetId) => {
-    if (assetId && !collectAssetIds(getState()).has(assetId)) removeAsset(assetId);
-  };
+  // A-2: images are released only when no state in undo history references them
+  const releaseIfUnreferenced = () => releaseUnusedAssets();
 
   // Shared: upload / replace / remove a character for a section.
   function bindCharacter({ input, remove, get, place, section }) {

@@ -1,4 +1,5 @@
 import { clampWidth } from "../components/md.js";
+import { getZoom, setZoom } from "./view.js";
 
 // One interaction controller for the whole workspace: it owns pointer, wheel and the single
 // active selection. Component knowledge (geometry, state paths, linked movement) lives in
@@ -8,10 +9,22 @@ import { clampWidth } from "../components/md.js";
 //             setWidth(draft, w), snapshot(state), applyMove(draft, snapshot, dx, dy), reset(draft) }
 // getAdapters(state) lists adapters TOP-MOST FIRST (hit-test order). It is called fresh each
 // time, because sticker adapters come and go with the sticker list.
-export function createInteraction({ overlay, sheet, getAdapters, guides, getState, updateState, getPreviewScale, onSelect, cssVar }) {
+export function createInteraction({ overlay, sheet, stage, getAdapters, guides, getState, updateState, getPreviewScale, onSelect, cssVar }) {
   const DEFAULT = "md.character";
   let selection = DEFAULT;
   let drag = null;
+
+  // v17 view zoom: the overlay is a STAGE-sized canvas pinned over the visible stage (outside the
+  // scroll content), so its bitmap never grows with zoom. It draws with a sheet-offset transform.
+  const host = stage.parentElement;
+  host.classList.add("has-overlay");
+  host.append(overlay);
+  stage.addEventListener("scroll", () => draw(getState()), { passive: true });
+
+  const insideSheet = (event) => {
+    const r = sheet.getBoundingClientRect();
+    return event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom;
+  };
 
   const find = (id, state = getState()) => getAdapters(state).find((a) => a.id === id) ?? null;
   // A selection whose object disappeared (e.g. a deleted sticker) falls back to the default.
@@ -48,6 +61,7 @@ export function createInteraction({ overlay, sheet, getAdapters, guides, getStat
 
   overlay.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
+    if (!insideSheet(event)) return; // the stage around the sheet is not a drag surface (as before)
     const state = getState();
     const hit = hitTest(state, toDesign(event, state));
     if (hit && hit !== selection) select(hit);
@@ -69,6 +83,7 @@ export function createInteraction({ overlay, sheet, getAdapters, guides, getStat
   });
 
   overlay.addEventListener("pointermove", (event) => {
+    if (!drag) overlay.classList.toggle("over-sheet", insideSheet(event));
     if (!drag || event.pointerId !== drag.pointerId) return;
     drag.pending = { x: event.clientX, y: event.clientY };
     if (!drag.frame) drag.frame = requestAnimationFrame(applyDrag); // one update per frame
@@ -101,7 +116,12 @@ export function createInteraction({ overlay, sheet, getAdapters, guides, getStat
   overlay.addEventListener(
     "wheel",
     (event) => {
-      if (!(event.ctrlKey || event.metaKey)) return;
+      if (!(event.ctrlKey || event.metaKey)) {
+        // plain wheel = view zoom around the cursor (never touches the project state)
+        event.preventDefault();
+        setZoom(getZoom() * Math.exp(-event.deltaY * 0.0015), { clientX: event.clientX, clientY: event.clientY });
+        return;
+      }
       const state = getState();
       const adapter = current(state);
       if (!adapter.has(state)) return;
@@ -114,9 +134,14 @@ export function createInteraction({ overlay, sheet, getAdapters, guides, getStat
 
   function draw(state) {
     const scale = getPreviewScale();
-    const cssWidth = Math.round(state.design.width * scale);
-    const cssHeight = Math.round(state.design.height * scale);
     const dpr = Math.max(1, window.devicePixelRatio || 1);
+    // overlay = the visible stage box (scrollbars excluded, so they stay grabbable)
+    const hostRect = host.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    const cssWidth = stage.clientWidth;
+    const cssHeight = stage.clientHeight;
+    overlay.style.left = `${stageRect.left - hostRect.left + stage.clientLeft}px`;
+    overlay.style.top = `${stageRect.top - hostRect.top + stage.clientTop}px`;
     overlay.style.width = `${cssWidth}px`;
     overlay.style.height = `${cssHeight}px`;
     if (overlay.width !== Math.round(cssWidth * dpr)) overlay.width = Math.round(cssWidth * dpr);
@@ -126,7 +151,10 @@ export function createInteraction({ overlay, sheet, getAdapters, guides, getStat
     const ctx = overlay.getContext("2d");
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, overlay.width, overlay.height);
-    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0); // design px → overlay px
+    const sheetRect = sheet.getBoundingClientRect();
+    const ox = sheetRect.left - (stageRect.left + stage.clientLeft);
+    const oy = sheetRect.top - (stageRect.top + stage.clientTop);
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * ox, dpr * oy); // design px → overlay px
     const px = 1 / scale;
 
     // Two-tone strokes: visible on any background.

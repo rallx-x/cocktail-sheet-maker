@@ -83,6 +83,7 @@ export function initTutorial() {
 
   const root = document.createElement("div");
   root.className = "tutorial-layer";
+  root.dataset.modalLayer = ""; // A-2: while shown, global Undo/Redo shortcuts are ignored
   root.hidden = true;
   root.innerHTML = `
     <div class="tutorial-shade tutorial-shade-top"></div>

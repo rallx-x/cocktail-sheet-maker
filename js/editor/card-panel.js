@@ -1,10 +1,10 @@
 import { createBuilderPanel } from "./builder-panel.js";
-import { registerAsset, removeAsset } from "../assets.js";
+import { registerAsset } from "../assets.js";
 import { FRAME_FILLS } from "../components/frame.js";
 import { TEXT_EFFECTS } from "../components/text-style.js";
 import { CARD_LIMITS, cardGeometry, cardOverflow } from "../components/card.js";
 import { fontStatus } from "../fonts.js";
-import { collectAssetIds, newSeed, normalizeHexColor } from "../state.js";
+import { newSeed, normalizeHexColor, releaseUnusedAssets } from "../state.js";
 import { bindRange, colorRow, createColorField, el, fontRow, rangeRow } from "../ui/controls.js";
 import { checkRow, selectRow } from "./frame-panels.js";
 import { STRINGS } from "../strings.js";
@@ -98,9 +98,8 @@ export function createCardPanel(container, { getState, updateState, reportError,
     try {
       // Register first: a broken file never touches the current image. Replacing keeps scale/dx/dy.
       const asset = await registerAsset(file, { name: file.name, type: file.type });
-      const previous = card(getState()).image.asset?.assetId;
       set((c) => (c.image.asset = asset));
-      if (previous && !collectAssetIds(getState()).has(previous)) removeAsset(previous);
+      releaseUnusedAssets(); // A-2: an image still held by undo history is kept
     } catch (error) {
       reportError(error);
     } finally {
@@ -108,9 +107,8 @@ export function createCardPanel(container, { getState, updateState, reportError,
     }
   });
   removeImage.addEventListener("click", () => {
-    const previous = card(getState()).image.asset?.assetId;
     set((c) => (c.image.asset = null));
-    if (previous && !collectAssetIds(getState()).has(previous)) removeAsset(previous);
+    releaseUnusedAssets(); // A-2: kept while undo history still references it
   });
 
   // ----- 재료 목록 -----

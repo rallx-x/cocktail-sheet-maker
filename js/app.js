@@ -8,10 +8,13 @@ import {
   editorConfig,
   getState,
   normalizeHexColor,
+  redo,
   setState,
   subscribe,
+  undo,
   updateState,
 } from "./state.js";
+import { canRedo, canUndo, installGestureTracking, installHistoryShortcuts, subscribeHistory } from "./history.js";
 import { renderSheet } from "./renderer.js";
 import { downloadProject, readProjectFile } from "./project-io.js";
 import { exportPng } from "./export.js";
@@ -19,6 +22,7 @@ import { getPatternStatus, loadPatternManifest, reloadPatternLibrary } from "./l
 import { BUILTIN_PATTERNS, PATTERN_GROUPS, getBuiltinPattern, minScaleFor } from "./patterns/builtin.js";
 import { makeSeed } from "./patterns/prng.js";
 import { createColorField } from "./ui/controls.js";
+import { ZOOM_RANGE, ZOOM_STEP, getZoom, onZoom, setZoom } from "./editor/view.js";
 import { createFigureEditor } from "./editor/figure-editor.js";
 import { STRINGS } from "./strings.js";
 import { initTesterBuild } from "./tester/tester-notice.js";
@@ -61,8 +65,10 @@ const els = {
 };
 
 let renderTicket = 0;
+// A-2: "unsaved" = the current state is not the one last saved / loaded (by reference), so undoing
+// back to the saved point clears the warning.
+let savedState = getState();
 let dirty = false;
-let suppressDirtyOnce = false;
 let resizeFrame = 0;
 let previewCssScale = 1;
 let patternList = [];
@@ -72,11 +78,33 @@ let lastBuiltinSettings = { ...BUILTIN_DEFAULTS };
 
 els.projectVersion.textContent = String(PROJECT_VERSION);
 
-subscribe(() => {
-  if (suppressDirtyOnce) suppressDirtyOnce = false;
-  else dirty = true;
+subscribe((state) => {
+  dirty = state !== savedState;
   queueRender();
 });
+
+// ---------- Undo / Redo (A-2) ----------
+
+installGestureTracking();
+installHistoryShortcuts({ undo, redo });
+const historyButton = (text, title, action) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "history-button";
+  b.textContent = text;
+  b.title = title;
+  b.addEventListener("click", action);
+  return b;
+};
+const undoButton = historyButton("↶ 이전", "되돌리기 (Ctrl+Z)", () => undo());
+const redoButton = historyButton("↷ 다음", "다시 하기 (Ctrl+Y)", () => redo());
+els.saveProjectButton.before(undoButton, redoButton);
+const syncHistoryButtons = () => {
+  undoButton.disabled = !canUndo();
+  redoButton.disabled = !canRedo();
+};
+subscribeHistory(syncHistoryButtons);
+syncHistoryButtons();
 
 window.addEventListener("resize", () => {
   cancelAnimationFrame(resizeFrame);
@@ -263,8 +291,10 @@ function renderPatternOptions(state) {
 els.saveProjectButton.addEventListener("click", async () => {
   try {
     els.saveProjectButton.disabled = true;
-    await downloadProject(getState(), "three-dots-project.tdad.json");
-    dirty = false;
+    const saving = getState();
+    await downloadProject(saving, "three-dots-project.tdad.json");
+    savedState = saving;
+    dirty = getState() !== savedState;
   } catch (error) {
     reportError(error);
   } finally {
@@ -279,8 +309,8 @@ els.projectInput.addEventListener("change", async (event) => {
   try {
     const { state: restored, commit } = await readProjectFile(file);
     commit();
-    suppressDirtyOnce = true;
-    setState(restored);
+    savedState = restored;
+    setState(restored); // also resets undo history (the loaded state is the new baseline)
     dirty = false;
     renderPatternOptions(restored);
   } catch (error) {
@@ -310,8 +340,7 @@ async function queueRender() {
 
   try {
     const preview = calculatePreviewRender(state);
-    els.canvas.style.width = preview.cssWidth ? `${preview.cssWidth}px` : "";
-    els.canvas.style.height = preview.cssHeight ? `${preview.cssHeight}px` : "";
+    applyPreviewSize(preview);
 
     await renderSheet(els.canvas, state, {
       renderScale: preview.renderScale,
@@ -333,18 +362,80 @@ function calculatePreviewRender(state) {
 
   // Measure the stage (the area above the status bar), not the preview frame:
   // the frame shrink-wraps the canvas and would lock the preview to its old size.
-  const availableWidth = Math.max(1, els.stage.clientWidth);
-  const availableHeight = Math.max(1, els.stage.clientHeight);
-  const cssScale = Math.min(1, availableWidth / width, availableHeight / height);
+  // offsetWidth/Height include the stage's own scrollbars, so zooming in never changes "fit".
+  const availableWidth = Math.max(1, els.stage.offsetWidth);
+  const availableHeight = Math.max(1, els.stage.offsetHeight);
+  const fitScale = Math.min(1, availableWidth / width, availableHeight / height);
+  // v17 view zoom (editor only): 100% = fit. The bitmap never exceeds export resolution;
+  // beyond that the browser upscales exactly what the PNG contains.
+  const cssScale = fitScale * getZoom();
   const dpr = Math.max(1, window.devicePixelRatio || 1);
 
   return {
     cssScale,
-    renderScale: cssScale * dpr,
+    renderScale: Math.min(cssScale * dpr, 1),
     cssWidth: Math.round(width * cssScale),
     cssHeight: Math.round(height * cssScale),
   };
 }
+
+// Applies the preview CSS size right away (the bitmap re-render follows asynchronously).
+function applyPreviewSize(preview) {
+  els.canvas.style.width = preview.cssWidth ? `${preview.cssWidth}px` : "";
+  els.canvas.style.height = preview.cssHeight ? `${preview.cssHeight}px` : "";
+  els.canvas.classList.toggle("is-upscaled", preview.cssScale * Math.max(1, window.devicePixelRatio || 1) > 1.001);
+  els.stage.classList.toggle("is-zoomed", getZoom() > 1);
+}
+
+// ---------- View zoom (editor camera; never touches the project state) ----------
+
+onZoom((zoom, anchor) => {
+  const stage = els.stage;
+  const before = els.canvas.getBoundingClientRect();
+  const sr = stage.getBoundingClientRect();
+  const ax = anchor ? anchor.clientX : sr.left + stage.clientWidth / 2;
+  const ay = anchor ? anchor.clientY : sr.top + stage.clientHeight / 2;
+  const fx = (ax - before.left) / Math.max(1, before.width);
+  const fy = (ay - before.top) / Math.max(1, before.height);
+  const preview = calculatePreviewRender(getState());
+  applyPreviewSize(preview);
+  previewCssScale = preview.cssScale;
+  const after = els.canvas.getBoundingClientRect();
+  // keep the sheet point that was under the anchor under it
+  stage.scrollLeft += after.left + fx * after.width - ax;
+  stage.scrollTop += after.top + fy * after.height - ay;
+  mdEditor.drawOverlay(getState());
+  syncZoomBar();
+  queueRender();
+});
+
+const zoomLabel = document.createElement("b");
+const zoomButton = (text, title, onClick) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "zoom-button";
+  b.textContent = text;
+  b.title = title;
+  b.setAttribute("aria-label", title);
+  b.addEventListener("click", onClick);
+  return b;
+};
+const zoomOut = zoomButton("−", "축소", () => setZoom(getZoom() / ZOOM_STEP));
+const zoomIn = zoomButton("+", "확대", () => setZoom(getZoom() * ZOOM_STEP));
+const zoomReset = zoomButton("100%", "원래 크기로 (화면 맞춤)", () => setZoom(1));
+const zoomBar = document.createElement("span");
+zoomBar.className = "zoom-bar";
+zoomBar.title = "휠로 확대·축소 (Ctrl + 휠은 선택한 요소 크기)";
+zoomBar.append("확대 ", zoomOut, zoomLabel, zoomIn, zoomReset);
+document.querySelector(".status-bar").prepend(zoomBar);
+function syncZoomBar() {
+  const z = getZoom();
+  zoomLabel.textContent = `${Math.round(z * 100)}%`;
+  zoomOut.disabled = z <= ZOOM_RANGE.min + 1e-6;
+  zoomIn.disabled = z >= ZOOM_RANGE.max - 1e-6;
+  zoomReset.disabled = z === 1;
+}
+syncZoomBar();
 
 function updateUi(state, previewCssScale = null) {
   const { width, height, pattern } = state.design;

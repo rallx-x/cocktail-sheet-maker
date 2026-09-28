@@ -4,6 +4,8 @@ import { THEMES } from "./themes/themes.js";
 import { createDefaultBackground } from "./background.js";
 import { glassFromPreset } from "./cocktail/glasses.js";
 import { applyTheme } from "./themes/apply-theme.js";
+import { listAssets, removeAsset } from "./assets.js";
+import { allHistoryStates, isSameContent, recordHistory, redoState, resetHistory, setHistoryDropHandler, undoState } from "./history.js";
 
 // Only used when a NEW barcode is created (new project / migration / explicit regenerate).
 export function newSeed() {
@@ -415,15 +417,48 @@ export function createNewProjectState() {
 
 let state = createNewProjectState();
 const listeners = new Set();
+resetHistory(state); // v17 (A-2): the first state is the history baseline
 
 export function getState() {
   return state;
 }
 
+// Project load / new project: the loaded state becomes the new history baseline.
 export function setState(nextState) {
   state = nextState;
+  resetHistory(state);
   emit();
 }
+
+// Undo / Redo restore a stored snapshot: no draft finalizers (snapshots are already finalized) and
+// no new history entry.
+function restoreState(snapshot) {
+  state = snapshot;
+  emit();
+}
+export function undo() {
+  const s = undoState();
+  if (s) restoreState(s);
+  return Boolean(s);
+}
+export function redo() {
+  const s = redoState();
+  if (s) restoreState(s);
+  return Boolean(s);
+}
+
+// Asset lifetime: an image may be released only when NO state in history (past, present, future)
+// references it any more, so undoing an image replace / remove always finds its image.
+export function releaseUnusedAssets() {
+  const keep = new Set();
+  for (const s of allHistoryStates()) for (const id of collectAssetIds(s)) keep.add(id);
+  for (const id of collectAssetIds(state)) keep.add(id);
+  for (const meta of listAssets()) {
+    const id = typeof meta === "string" ? meta : meta.assetId ?? meta.id;
+    if (id && !keep.has(id)) removeAsset(id);
+  }
+}
+setHistoryDropHandler(() => releaseUnusedAssets());
 
 // Draft finalizers run ONCE inside updateState, after the updater and before commit, with the
 // previous committed state for comparison. They must only edit the draft (never call updateState);
@@ -438,8 +473,14 @@ export function updateState(updater) {
   const draft = structuredClone(state);
   updater(draft);
   for (const fn of draftFinalizers) fn(draft, state);
-  draft.meta.updatedAt = new Date().toISOString();
-  state = draft;
+  const prev = state;
+  // A-2: an update that changes nothing keeps the SAME state object (no undo step, not dirty),
+  // but still notifies, so "re-render" nudges keep working.
+  if (!isSameContent(prev, draft)) {
+    draft.meta.updatedAt = new Date().toISOString();
+    state = draft;
+    recordHistory(prev, draft);
+  }
   emit();
 }
 

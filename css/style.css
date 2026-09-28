@@ -248,7 +248,7 @@ textarea.text-input { height: auto; padding: 6px 9px; resize: vertical; font: in
 
 #sheetCanvas { display: block; background: transparent; box-shadow: var(--canvas-shadow); }
 .overlay { position: absolute; left: 0; top: 0; touch-action: none; }
-.overlay.is-editable { cursor: grab; }
+.overlay.is-editable.over-sheet { cursor: grab; }
 .overlay.is-dragging { cursor: grabbing; }
 /* Native hidden behavior must win over #sheetCanvas { display:block }. */
 #sheetCanvas[hidden] { display: none; }
@@ -332,3 +332,23 @@ dialog.tester-notice::backdrop { background: rgba(10, 8, 14, .6); }
 .md-viewport-panel { margin-top: 8px; }
 .md-viewport-actions { display: flex; gap: 6px; margin-bottom: 8px; }
 .md-viewport-actions .reseed-button { flex: 1; width: auto; margin: 0; min-height: 30px; }
+
+/* v17 view zoom: the stage scrolls only while zoomed; the preview frame centers with margin:auto so
+   overflowing top/left edges stay reachable. The overlay is pinned over the visible stage by JS. */
+.workspace.has-overlay { position: relative; }
+.stage { place-items: start; }
+.stage.is-zoomed { overflow: auto; }
+.preview-frame { margin: auto; }
+#sheetCanvas.is-upscaled { image-rendering: pixelated; }
+.zoom-bar { display: inline-flex; align-items: baseline; gap: 4px; }
+.zoom-bar b { min-width: 3.4em; text-align: center; }
+.zoom-button {
+  /* same line box as the status text, so the status bar (and the fitted preview) keeps its height */
+  min-height: 0; margin: 0; padding: 0 7px; border: 0; border-radius: 5px;
+  font: inherit; line-height: inherit; background: var(--panel-2); color: var(--text); cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.zoom-button:disabled { opacity: .4; cursor: default; }
+
+/* A-2 undo / redo (first row of the footer) */
+.history-button:disabled { opacity: .45; cursor: default; }
