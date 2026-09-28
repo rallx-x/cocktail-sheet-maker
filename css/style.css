@@ -352,3 +352,16 @@ dialog.tester-notice::backdrop { background: rgba(10, 8, 14, .6); }
 
 /* A-2 undo / redo (first row of the footer) */
 .history-button:disabled { opacity: .45; cursor: default; }
+
+/* v17 Random Cocktail + memo */
+.random-box { margin-bottom: 6px; }
+.random-families { flex-wrap: wrap; }
+.family-chip { gap: 3px; }
+.family-chip .family-heart { font-size: 13px; line-height: 1; }
+.random-go { width: 100%; margin: 4px 0 6px; }
+.random-go:disabled { opacity: .45; cursor: default; }
+.random-current { margin: 6px 0 0; color: var(--text); font-size: var(--fs-small); }
+.random-test-note { margin-top: 0; }
+.random-caution { color: var(--accent); }
+.memo-text { width: 100%; min-height: 64px; resize: vertical; font: inherit; margin-bottom: 8px; }
+.link-hint { color: var(--accent); margin-top: 2px; }

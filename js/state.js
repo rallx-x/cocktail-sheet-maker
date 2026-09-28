@@ -14,7 +14,7 @@ export function newSeed() {
   return buffer[0];
 }
 
-export const PROJECT_VERSION = 16;
+export const PROJECT_VERSION = 17;
 
 // Editor-only values never enter sheet geometry.
 export const editorConfig = {
@@ -142,16 +142,47 @@ export function createDefaultPalette(visible = true, a = sheetLayout.paletteArea
 
 // Cocktail Builder (v15, Phase 1a). Colors are { ref: palette chip id | null, color: cached/custom hex }.
 // Seeds change only through an explicit "다시 섞기".
+export const LIQUID_STOP_MAX = 6; // v17 (was 3): the renderer takes any N; only the UI cap + normalization clamp
+// v17 sheet memo (TIP): a small note on the card layer — cocktail / character / pair mood.
+// Geometry follows R5: x/y = center (fractions of W/H), width = fraction of W, aspect = h/w, size = font px / memo width.
+export const MEMO_TEXT_MAX = 120;
+export function createDefaultMemo(colors = createDefaultSheetColors(), visible = false) {
+  return {
+    visible,
+    style: "napkin", // "napkin" | "note"
+    text: "",
+    auto: false, // true while the text is exactly what Random Cocktail wrote (then Random may replace it)
+    x: 0.565,
+    y: 0.385,
+    width: 0.2,
+    aspect: 0.42,
+    rotation: -3, // degrees
+    font: FONT_DEFAULTS.memo,
+    size: 0.075,
+    color: colors.ink,
+    paper: colors.cardBase,
+    edge: colors.inkSoft,
+    tape: colors.accent,
+    align: "center",
+  };
+}
+
 export function createDefaultBuilder(chips = createDefaultPalette().chips) {
   const stop = (chip, fallback, pos) => ({ ref: chip?.id ?? null, color: chip?.hex ?? fallback, pos });
   return {
     glass: glassFromPreset("martini"),
     scale: 0.9, // 잔 크기: scales the finished glass inside the slot; never touches geometry params
-    liquid: { level: 0.7, stops: [stop(chips[0], "#C7A4D8", 0), stop(chips[1], "#F0A0B8", 1)] },
+    // v17 blend: "smooth" = gradient between stops, "layers" = hard layers (a stop's pos = its layer's bottom)
+    liquid: { level: 0.7, blend: "smooth", stops: [stop(chips[0], "#C7A4D8", 0), stop(chips[1], "#F0A0B8", 1)] },
     ice: { type: "none", count: 2, seed: newSeed() },
-    rim: { type: "none", color: { ref: null, color: "#FFFFFF" }, seed: newSeed() },
+    // v17 coverage: "full" | "half" (half = one side of the rim band)
+    rim: { type: "none", coverage: "full", color: { ref: null, color: "#FFFFFF" }, seed: newSeed() },
     // 1b: rim-attached COLOR MONA pixel emoji (the glyph carries its own colors)
     garnish: [{ char: "🍒", u: 0.8, size: "M", rotation: 0 }],
+    // v17: link to the Character Color Palette. on → a stop's live chip ref wins (as before v17);
+    // off → every stop / the rim draws its own color. lastEdited decides the relink direction.
+    paletteLink: { on: true, lastEdited: "palette" },
+    presetId: null, // v17: catalog entry last applied by Random Cocktail (informational; never rendered)
   };
 }
 
@@ -392,6 +423,7 @@ export function createInitialState() {
       plateSync: false,
       stickers: [], // sheet-level stickers (built-in or folder), see components/stickers.js
       card: createDefaultCard(),
+      memo: createDefaultMemo(),
       receipt: createDefaultReceipt(),
       palette: createDefaultPalette(),
       barcode: { seed: newSeed() }, // ONE persistent barcode shared by card and receipt

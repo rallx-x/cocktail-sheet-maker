@@ -4,6 +4,7 @@ import { getDecodedAsset } from "./assets.js";
 import { coasterLibrary, getPatternImage, stickerLibrary } from "./library.js";
 import { drawSticker } from "./components/stickers.js";
 import { drawCard } from "./components/card.js";
+import { drawMemo } from "./components/memo.js";
 import { drawReceipt } from "./components/receipt.js";
 import { drawPalette } from "./components/palette.js";
 import { autoPalette, contrast, resolveFrameColors } from "./decor/auto-color.js";
@@ -44,6 +45,10 @@ export function fontNeeds(state) {
     sample += [receipt.title.text, receipt.subtitle.text, receipt.footer.text, ...Object.values(receipt.header)].join("");
     for (const s of receipt.sections) sample += s.title + s.items.map((it) => Object.values(it).join("")).join("");
     sample += "DATEORDERCLIENTSERVER0123456789.";
+  }
+  if (c.memo?.visible && c.memo.text) {
+    ids.push(c.memo.font);
+    sample += c.memo.text + "…";
   }
   const banner = c.md?.decor?.banner;
   if (banner?.visible && banner.text) {
@@ -156,6 +161,9 @@ export async function renderSheet(canvas, state, options = {}) {
   if (comps.card?.visible) {
     drawCard(ctx, comps.card, { barcodeSeed: comps.barcode?.seed ?? 1, hex: comps.order?.hex ?? "", paletteChips: comps.palette?.chips ?? [] }, { cardImage }, width, height, renderScale);
   }
+
+  // v17 sheet memo: card layer (above MD, below SD — the SD tray may overlap it)
+  if (comps.memo?.visible) drawMemo(ctx, comps.memo, width, height);
 
   // Layer 3 — SD area: doily → decor text → SD character
   if (sd) drawSd(ctx, sd, { character: sdCharacterImage }, width, height, renderScale);

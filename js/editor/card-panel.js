@@ -1,4 +1,5 @@
 import { createBuilderPanel } from "./builder-panel.js";
+import { createRandomPanel } from "./random-panel.js";
 import { registerAsset } from "../assets.js";
 import { FRAME_FILLS } from "../components/frame.js";
 import { TEXT_EFFECTS } from "../components/text-style.js";
@@ -235,11 +236,14 @@ export function createCardPanel(container, { getState, updateState, reportError,
   const uploadBox = el("div", {}, imageRow, imageName, imgScale.row, imgDx.row, imgDy.row);
   const builderBox = el("div", { class: "builder-box" });
   const builderPanel = createBuilderPanel(builderBox, { getState, updateState });
+  const randomBox = el("div", { class: "random-box" }); // v17
+  const randomPanel = createRandomPanel(randomBox, { getState, updateState });
 
   const cardBody = el("div", {}, pick, sizing.row, fillType.row, fill1.row, fill2.row, angle.row, aspect.row, radius.row, borderColor.row, borderWidth.row, coating.row, coatingStrength.row);
   const body = el(
     "div",
     {},
+    randomBox,
     group("카드", true, cardBody),
     title.node,
     group("칵테일 그림", true, sourceRow, uploadBox, builderBox, imgSlot.row, imgFrame.row, imgFrameColor.row),
@@ -307,6 +311,7 @@ export function createCardPanel(container, { getState, updateState, reportError,
       for (const [row, read] of toggles) row.box.checked = read(c);
       body.hidden = !c.visible;
       if (!c.visible) return;
+      randomPanel.sync(state);
       fillType.select.value = c.fill.type;
       fill2.row.hidden = c.fill.type !== "linear";
       angle.row.hidden = c.fill.type !== "linear";

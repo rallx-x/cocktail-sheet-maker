@@ -11,6 +11,9 @@ import {
   MD_WIDTH_RANGE,
   VIEWPORT_MIN,
   createDefaultViewport,
+  createDefaultMemo,
+  LIQUID_STOP_MAX,
+  MEMO_TEXT_MAX,
   SCALE_RANGE,
   collectAssetIds,
   createDefaultBrand,
@@ -316,6 +319,26 @@ const migrations = new Map([
       return project;
     },
   ],
+  // v16 → v17 (one migration for the whole v17 set): sheet memo (hidden), builder liquid.blend "smooth",
+  // rim.coverage "full", presetId null, paletteLink ON. paletteLink ON is exactly the pre-v17 rule (a live
+  // chip ref wins, a null ref draws its own color), so every older file renders pixel-identically.
+  [
+    16,
+    (project) => {
+      const comps = (project.components = project.components ?? {});
+      const colors = { ...createDefaultSheetColors(), ...(project.design?.colors ?? {}) };
+      comps.memo = createDefaultMemo(colors, false);
+      const b = comps.card?.builder;
+      if (b && typeof b === "object") {
+        b.liquid = { ...(b.liquid ?? {}), blend: "smooth" };
+        b.rim = { ...(b.rim ?? {}), coverage: "full" };
+        b.presetId = null;
+        b.paletteLink = { on: true, lastEdited: "palette" };
+      }
+      project.projectVersion = 17;
+      return project;
+    },
+  ],
 ]);
 
 // The card exactly as createDefaultCard produced it up to v12 (center-anchored, one `items` list).
@@ -422,6 +445,7 @@ export async function deserializeProject(raw) {
   const seed = Number(migrated.components?.barcode?.seed);
   restored.components.barcode = { seed: Number.isInteger(seed) && seed >= 0 && seed <= 0xffffffff ? seed : 1 };
   restored.components.order = { hex: normalizeHexColor(migrated.components?.order?.hex) ?? "" };
+  restored.components.memo = normalizeMemo(migrated.components?.memo, restored.design.colors);
   restored.components.receipt = normalizeReceipt(migrated.components?.receipt, restored.components.barcode.seed);
   // (palette is normalized before the card: builder colors reference chip ids)
   validateDesign(restored.design);
@@ -1017,14 +1041,18 @@ function normalizeBuilder(raw, chips) {
     glass = glassFromPreset(g.preset, within(g.height, HEIGHT_RANGE.min, HEIGHT_RANGE.max, 1));
   }
   const stops = (Array.isArray(raw.liquid?.stops) ? raw.liquid.stops : [])
-    .slice(0, 3)
+    .slice(0, LIQUID_STOP_MAX)
     .map((st) => ({ ...color(st, "#FFFFFF"), pos: within(st?.pos, 0, 1, 0) }))
     .sort((a, b) => a.pos - b.pos);
   const seed = (v, fb) => (Number.isInteger(v) && v >= 0 ? v >>> 0 : fb);
   return {
     glass,
     scale: within(raw.scale, 0.5, 1, base.scale),
-    liquid: { level: within(raw.liquid?.level, 0, 1, base.liquid.level), stops: stops.length ? stops : base.liquid.stops },
+    liquid: {
+      level: within(raw.liquid?.level, 0, 1, base.liquid.level),
+      blend: raw.liquid?.blend === "layers" ? "layers" : "smooth",
+      stops: stops.length ? stops : base.liquid.stops,
+    },
     ice: {
       type: raw.ice?.type === "cubes" ? "cubes" : "none",
       count: Math.round(within(raw.ice?.count, 1, 4, base.ice.count)),
@@ -1032,6 +1060,7 @@ function normalizeBuilder(raw, chips) {
     },
     rim: {
       type: ["salt", "sugar"].includes(raw.rim?.type) ? raw.rim.type : "none",
+      coverage: raw.rim?.coverage === "half" ? "half" : "full",
       color: color(raw.rim?.color, "#FFFFFF"),
       seed: seed(raw.rim?.seed, base.rim.seed),
     },
@@ -1042,6 +1071,36 @@ function normalizeBuilder(raw, chips) {
       size: ["S", "M", "L"].includes(g?.size) ? g.size : "M",
       rotation: within(g?.rotation, -180, 180, 0),
     })).filter((g) => g.char),
+    paletteLink: {
+      on: raw.paletteLink?.on !== false,
+      lastEdited: raw.paletteLink?.lastEdited === "cocktail" ? "cocktail" : "palette",
+    },
+    presetId: typeof raw.presetId === "string" && raw.presetId ? raw.presetId.slice(0, 64) : null,
+  };
+}
+
+// v17 sheet memo. Missing (a v17 file without it) → the hidden default in the sheet's colors.
+function normalizeMemo(raw, colors) {
+  const base = createDefaultMemo(colors, false);
+  if (!raw || typeof raw !== "object") return base;
+  const text = typeof raw.text === "string" ? [...raw.text.replace(/\r\n?/g, "\n")].slice(0, MEMO_TEXT_MAX).join("") : "";
+  return {
+    visible: raw.visible === true,
+    style: raw.style === "note" ? "note" : "napkin",
+    text,
+    auto: raw.auto === true && text.length > 0,
+    x: within(raw.x, -0.5, 1.5, base.x),
+    y: within(raw.y, -0.5, 1.5, base.y),
+    width: within(raw.width, 0.05, 0.8, base.width),
+    aspect: within(raw.aspect, 0.15, 2, base.aspect),
+    rotation: within(raw.rotation, -30, 30, base.rotation),
+    font: normalizeFontId(raw.font, "memo"),
+    size: within(raw.size, 0.03, 0.2, base.size),
+    color: hex(raw.color, base.color),
+    paper: hex(raw.paper, base.paper),
+    edge: hex(raw.edge, base.edge),
+    tape: hex(raw.tape, base.tape),
+    align: ["left", "center", "right"].includes(raw.align) ? raw.align : "center",
   };
 }
 

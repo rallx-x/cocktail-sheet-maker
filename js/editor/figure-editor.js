@@ -7,6 +7,7 @@ import { createBrandPanel, createTrayPanel } from "./box-panels.js";
 import { createFramePanel, createMdDecorPanel } from "./frame-panels.js";
 import { createStickerPanel } from "./sticker-panel.js";
 import { createCardPanel } from "./card-panel.js";
+import { createMemoPanel } from "./memo-panel.js";
 import { createReceiptPanel } from "./receipt-panel.js";
 import { createConfettiPanel } from "./confetti-panel.js";
 import { createPalettePanel } from "./palette-panel.js";
@@ -195,6 +196,7 @@ export function createFigureEditor({ getState, updateState, getPreviewScale, rep
     reportError,
     select: (id) => interaction.select(id),
   });
+  const memoPanel = createMemoPanel($("#cardPanel"), { getState, updateState, select: (id) => interaction.select(id) }); // v17
   const receiptPanel = createReceiptPanel($("#receiptPanel"), {
     getState,
     updateState,
@@ -330,6 +332,7 @@ export function createFigureEditor({ getState, updateState, getPreviewScale, rep
     framePanel.sync(state);
     mdDecorPanel.sync(state);
     cardPanel.sync(state);
+    memoPanel.sync(state);
     receiptPanel.sync(state);
     confettiPanel.sync(state);
     palettePanel.sync(state);

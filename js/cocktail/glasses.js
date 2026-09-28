@@ -30,9 +30,12 @@ export const PRESETS = {
   coupe: { label: "쿠페", family: "stemmed", heightMap: { bowl: 0.3, stem: 0.7 }, params: { bowl: "round", bowlW: 1, bowlDepth: 0.34, floor: 0, curve: 1, belly: 1, stemH: 0.8, footW: 0.6, wall: 0.035 } },
   nickNora: { label: "닉앤노라", family: "stemmed", heightMap: { bowl: 0.4, stem: 0.6 }, params: { bowl: "round", bowlW: 0.84, bowlDepth: 0.42, floor: 0.45, curve: 0.3, belly: 1, stemH: 0.8, footW: 0.58, wall: 0.035 } },
   tulip: { label: "튤립", family: "stemmed", heightMap: { bowl: 0.6, stem: 0.4 }, params: { bowl: "tulip", bowlW: 0.7, bowlDepth: 0.95, floor: 0, curve: 1, belly: 1.22, stemH: 0.55, footW: 0.6, wall: 0.035 } },
+  // v17: two more tumbler presets (no new generator)
+  shot: { label: "샷", family: "tumbler", heightMap: null, params: { height: 1.3, topW: 0.82, bottomW: 0.62, baseThick: 0.3, wall: 0.05, facetLines: 0 } },
+  pint: { label: "파인트", family: "tumbler", heightMap: null, params: { height: 2.2, topW: 0.98, bottomW: 0.72, baseThick: 0.12, wall: 0.035, facetLines: 0 } },
   flute: { label: "플루트", family: "stemmed", heightMap: { bowl: 0.7, stem: 0.3 }, params: { bowl: "tulip", bowlW: 0.42, bowlDepth: 1.35, floor: 0, curve: 1, belly: 1.08, stemH: 0.7, footW: 0.5, wall: 0.03 } },
 };
-export const PRESET_ORDER = ["rocks", "oldFashioned", "highball", "collins", "martini", "coupe", "nickNora", "tulip", "flute"];
+export const PRESET_ORDER = ["rocks", "oldFashioned", "highball", "collins", "martini", "coupe", "nickNora", "tulip", "flute", "shot", "pint"];
 
 // A fresh glass state (params snapshot) from a preset.
 export function glassFromPreset(id, height = 1) {

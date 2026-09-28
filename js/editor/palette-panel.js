@@ -153,7 +153,8 @@ function removeChip(draft, i) {
   const chips = draft.components.palette.chips;
   const gone = chips[i];
   const b = draft.components.card?.builder;
-  if (gone && b) {
+  // v17: only while linked — an unlinked cocktail already draws its own colors and must keep them
+  if (gone && b && b.paletteLink?.on !== false) {
     for (const c of [...b.liquid.stops, b.rim.color]) if (c.ref === gone.id) c.color = gone.hex;
   }
   chips.splice(i, 1);

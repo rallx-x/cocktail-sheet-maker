@@ -25,6 +25,7 @@ import { cardRect } from "../components/card.js";
 import { receiptBounds } from "../components/receipt.js";
 import { confettiRect } from "../components/confetti.js";
 import { paletteRect } from "../components/palette.js";
+import { memoBounds } from "../components/memo.js";
 
 // Receipt bounds depend on measured text (paper height), so the adapter measures with this ctx.
 const measureCtx = typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
@@ -196,6 +197,18 @@ export function createAdapters() {
     },
   ]);
 
+  // v17 sheet memo: part of the card section (card layer)
+  const [memo] = makeChain("card", () => false, [
+    {
+      id: "memo",
+      get: (s) => c(s).memo,
+      exists: (s) => Boolean(c(s).memo),
+      has: (s) => Boolean(c(s).memo?.visible),
+      rect: (s) => memoBounds(c(s).memo, W(s), H(s)),
+      home: () => ({ x: 0.565, y: 0.385 }),
+    },
+  ]);
+
   const [receipt] = makeChain("receipt", () => false, [
     {
       id: "receipt",
@@ -279,6 +292,7 @@ export function createAdapters() {
       palette, // drawn right after the receipt
       receipt, // Layer 4: below front stickers and brand, above SD
       ...sdChain,
+      memo, // v17: card layer, drawn after the card
       card, // Layer 2: above MD, below SD
       ...mdChain,
       mdBanner,

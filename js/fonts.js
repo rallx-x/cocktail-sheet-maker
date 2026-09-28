@@ -28,6 +28,7 @@ export const FONT_DEFAULTS = {
   receipt: "mona",
   script: "lovingu",
   decor: "system",
+  memo: "goun", // v17 sheet memo: a Korean handwriting-feel face
 };
 
 export function isFontId(id) {

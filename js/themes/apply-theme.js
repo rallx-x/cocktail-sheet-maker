@@ -45,6 +45,7 @@ const frameEdit = (c, fn) => {
   f.colorMode = "manual"; // a Sheet Color written here must be visible (auto mode would override it)
 };
 const card = (c, fn) => c.card && fn(c.card);
+const memo = (c, fn) => c.memo && fn(c.memo); // v17 sheet memo
 const receipt = (c, fn) => c.receipt && fn(c.receipt);
 const decor = (c, fn) => c.md?.decor && fn(c.md.decor);
 const stickersWith = (c, role, v) => {
@@ -63,7 +64,7 @@ export const ROLE_TARGETS = {
     (d, v) => frameEdit(d.components, (f) => (f.fill.colors[1] = v)), // MD bottom (top stays #FFFFFF)
     (d, v) => card(d.components, (k) => (k.fill.colors[1] = v)),
   ],
-  cardBase: [(d, v) => card(d.components, (k) => (k.fill.colors[0] = v))],
+  cardBase: [(d, v) => card(d.components, (k) => (k.fill.colors[0] = v)), (d, v) => memo(d.components, (m) => (m.paper = v))],
   ink: [
     (d, v) => frameEdit(d.components, (f) => (f.border.color = v)),
     (d, v) =>
@@ -81,6 +82,7 @@ export const ROLE_TARGETS = {
         r.barcode.color = v;
       }),
     (d, v) => decor(d.components, (m) => (m.outline.color = v)),
+    (d, v) => memo(d.components, (m) => (m.color = v)),
     (d, v) => {
       const p = d.components.palette;
       if (p) p.title.color = p.text.color = v;
@@ -114,6 +116,7 @@ export const ROLE_TARGETS = {
       if (p) p.card.border = v;
     },
     (d, v) => decor(d.components, (m) => (m.banner.back = v)),
+    (d, v) => memo(d.components, (m) => (m.edge = v)),
   ],
   accent: [
     (d, v) =>
@@ -137,6 +140,7 @@ export const ROLE_TARGETS = {
         k.name.effectColor = v;
       }),
     (d, v) => stickersWith(d.components, "accent", v),
+    (d, v) => memo(d.components, (m) => (m.tape = v)),
   ],
   accent2: [
     (d, v) =>

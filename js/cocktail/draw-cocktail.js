@@ -49,6 +49,8 @@ function garnishUnit(g, geo) {
 }
 
 export function drawCocktail(ctx, builder, slot, { ink = "#3A2E3F", chips = [] } = {}) {
+  // v17 palette link OFF: every stop / the rim draws its own stored color (refs are kept for relinking)
+  if (builder.paletteLink && builder.paletteLink.on === false) chips = [];
   const { s, ox, oy, geo, padX } = cocktailFit(builder, slot);
   const lw = Math.max(slot.w * 0.012, 0.5) / s; // line width in unit space
   ctx.save();
@@ -73,7 +75,20 @@ export function drawCocktail(ctx, builder, slot, { ink = "#3A2E3F", chips = [] }
     const stops = [...builder.liquid.stops].sort((a, b) => a.pos - b.pos);
     let fill;
     if (stops.length === 1) fill = resolveColor(stops[0], chips);
-    else {
+    else if (builder.liquid.blend === "layers") {
+      // v17 layers: stop i fills from its pos (the first from the bottom) up to the next stop's pos,
+      // with a ~1px soft seam; the same hard-stop gradient keeps preview and export identical.
+      fill = ctx.createLinearGradient(0, bottom, 0, surface);
+      const seam = Math.min(0.02, (lw * 0.6) / Math.max(1e-6, bottom - surface));
+      const p = stops.map((st, i) => (i === 0 ? 0 : Math.min(1, Math.max(0, st.pos))));
+      stops.forEach((st, i) => {
+        const c = resolveColor(st, chips);
+        const from = i === 0 ? 0 : Math.min(1, p[i] + seam / 2);
+        const to = i === stops.length - 1 ? 1 : Math.max(from, p[i + 1] - seam / 2);
+        fill.addColorStop(from, c);
+        fill.addColorStop(to, c);
+      });
+    } else {
       fill = ctx.createLinearGradient(0, bottom, 0, surface);
       for (const st of stops) fill.addColorStop(Math.min(1, Math.max(0, st.pos)), resolveColor(st, chips));
     }
@@ -249,9 +264,12 @@ function drawRim(ctx, rim, geo, lw, color) {
     const half = Math.max(0.02, geo.innerHalfWidth(y) + lw * 1.2);
     const x = (rng() * 2 - 1) * half;
     const size = salt ? lw * (1.5 + rng() * 1.3) : lw * (0.8 + rng() * 0.4);
+    const skip = rim.coverage === "half" && x < -half * 0.08; // v17 half rim: one side (right) of the band
+    const rot = salt ? rng() * Math.PI : 0; // drawn from the RNG even when skipped: same grains for "full"
+    if (skip) continue;
     ctx.save();
     ctx.translate(x, y);
-    if (salt) ctx.rotate(rng() * Math.PI);
+    if (salt) ctx.rotate(rot);
     ctx.beginPath();
     ctx.rect(-size / 2, -size / 2, size, size);
     ctx.fill();
@@ -264,6 +282,7 @@ function drawRim(ctx, rim, geo, lw, color) {
     for (let i = 0; i < 5; i++) {
       const x = (rng() * 2 - 1) * rx * 0.9;
       const y = cy + band * rng();
+      if (rim.coverage === "half" && x < -rx * 0.08) continue;
       const k = lw * 1.6;
       ctx.beginPath();
       ctx.moveTo(x - k, y);

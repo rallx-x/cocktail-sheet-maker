@@ -3,13 +3,17 @@ import { GARNISH_FONT, drawCocktail, resolveColor } from "../cocktail/draw-cockt
 import { stopsCss } from "../background.js";
 import { makeSeed } from "../patterns/prng.js";
 import { bindRange, el, rangeRow } from "../ui/controls.js";
+import { LIQUID_STOP_MAX } from "../state.js";
+import { relink, relinkOverwritesPalette, unlink } from "../cocktail/palette-link.js";
 
 // Cocktail Builder panel (v15, Phase 1a): 잔 → 음료 → 얼음 → 림. Writes only card.builder.
 // Colors come from the Character Color Palette as { ref: chip id, color } (live link) or a custom color.
 
-const STOP_MAX = 3;
+const STOP_MAX = LIQUID_STOP_MAX; // v17: 6 (was 3)
 const B = (s) => s.components.card.builder;
 const chipsOf = (s) => s.components.palette.chips;
+// v17: what the renderer resolves against — no chips while the palette link is OFF (own colors show)
+const liveChips = (s) => (B(s).paletteLink?.on === false ? [] : chipsOf(s));
 const round = (v) => Math.round(v * 1000) / 1000;
 
 function caption(text) {
@@ -49,15 +53,17 @@ function chipRow({ getState, updateState, read, write, white = false }) {
         build(chips);
       }
       const cur = read(state);
+      const linked = B(state).paletteLink?.on !== false;
       let matched = false;
       for (const b of buttons) {
         const o = b._opt;
-        const on = o.white ? !cur.ref && cur.color === "#FFFFFF" : cur.ref === o.id && chips.some((c) => c.id === cur.ref);
+        const same = String(cur.color).toUpperCase() === String(o.hex).toUpperCase();
+        const on = o.white ? !cur.ref && cur.color === "#FFFFFF" : cur.ref === o.id && chips.some((c) => c.id === cur.ref) && (linked || same);
         b.setAttribute("aria-pressed", String(on));
         matched ||= on;
       }
       customLabel.classList.toggle("active", !matched);
-      const shown = resolveColor(cur, chips).toLowerCase();
+      const shown = resolveColor(cur, liveChips(state)).toLowerCase();
       if (document.activeElement !== custom) custom.value = shown;
     },
   };
@@ -103,6 +109,14 @@ export function createBuilderPanel(container, { getState, updateState }) {
   const removeStop = el("button", { class: "reseed-button", type: "button", text: "색 지우기" });
   const flip = el("button", { class: "reseed-button", type: "button", text: "↔ 뒤집기", title: "바닥과 표면을 뒤집어요" });
   const stopPos = rangeRow("위치", { min: 0, max: 100, step: 1, unit: "%" });
+  // v17: smooth gradient vs hard layers
+  const blend = selectRow("섞임", [["smooth", "부드럽게 섞기"], ["layers", "층 나누기"]]);
+  blend.select.addEventListener("change", (e) => set((bd) => (bd.liquid.blend = e.target.value === "layers" ? "layers" : "smooth")));
+  // v17: Character Color Palette link ON/OFF (the side edited last wins on relink)
+  const linkBox = el("input", { type: "checkbox" });
+  const linkRow = el("label", { class: "check-row" }, linkBox, el("span", { text: "캐릭터 컬러 팔레트와 연결" }));
+  const linkHint = el("p", { class: "hint link-hint", hidden: true, text: "다시 연결하면 칵테일 색이 컬러 팔레트에 들어가요." });
+  linkBox.addEventListener("change", (e) => updateState((d) => (e.target.checked ? relink(d) : unlink(d))));
   let selected = 0;
   const liquidChips = chipRow({
     getState,
@@ -191,6 +205,8 @@ export function createBuilderPanel(container, { getState, updateState }) {
 
   // ---- 림 ----
   const rimType = selectRow("림", [["none", "없음"], ["salt", "소금"], ["sugar", "설탕"]]);
+  const rimCoverage = selectRow("범위", [["full", "한 바퀴"], ["half", "반쪽"]]);
+  rimCoverage.select.addEventListener("change", (e) => set((bd) => (bd.rim.coverage = e.target.value === "half" ? "half" : "full")));
   const rimChips = chipRow({ getState, updateState, white: true, read: (s) => B(s).rim.color, write: (d, c) => (B(d).rim.color = c) });
   const rimReroll = el("button", { class: "reseed-button", type: "button", text: "림 다시 섞기" });
   rimType.select.addEventListener("change", (e) => set((bd) => (bd.rim.type = e.target.value)));
@@ -293,16 +309,16 @@ export function createBuilderPanel(container, { getState, updateState }) {
   const liquidTools = el("div", { class: "button-row builder-buttons" }, addStop, removeStop, flip);
   container.append(
     caption("잔"), grid, height.row, size.row,
-    caption("음료"), level.row, ends, bar, pins, liquidTools, stopPos.row, liquidChips.node,
+    caption("음료"), level.row, blend.row, ends, bar, pins, liquidTools, stopPos.row, liquidChips.node, linkRow, linkHint,
     caption("얼음"), iceType.row, iceCount.row, iceReroll,
-    caption("림"), rimType.row, rimChips.node, rimReroll,
+    caption("림"), rimType.row, rimCoverage.row, rimChips.node, rimReroll,
     caption("가니쉬"), gList, gAdd, gEdit,
-    el("p", { class: "hint", text: "음료·림 색은 캐릭터 컬러 팔레트와 연결돼요. 팔레트 색을 바꾸면 칵테일도 같이 바뀌어요." }),
+    el("p", { class: "hint", text: "팔레트와 연결돼 있으면 팔레트 색을 바꿀 때 칵테일도 같이 바뀌어요. 연결을 끄면 칵테일 색을 따로 쓸 수 있고, 다시 연결하면 마지막에 바꾼 쪽 색으로 맞춰져요." }),
   );
 
   function sync(state) {
     const b = B(state);
-    const chips = chipsOf(state);
+    const chips = liveChips(state);
     for (const t of thumbs) t.b.setAttribute("aria-pressed", String(b.glass.preset === t.id));
     ranges.forEach((r) => r.sync(state));
     const stops = b.liquid.stops;
@@ -323,7 +339,13 @@ export function createBuilderPanel(container, { getState, updateState }) {
     iceType.select.value = b.ice.type;
     iceCount.row.hidden = iceReroll.hidden = b.ice.type !== "cubes";
     rimType.select.value = b.rim.type;
-    rimChips.node.hidden = rimReroll.hidden = b.rim.type === "none";
+    rimChips.node.hidden = rimReroll.hidden = rimCoverage.row.hidden = b.rim.type === "none";
+    rimCoverage.select.value = b.rim.coverage === "half" ? "half" : "full";
+    blend.select.value = b.liquid.blend === "layers" ? "layers" : "smooth";
+    blend.row.hidden = stops.length < 2;
+    const linked = b.paletteLink?.on !== false;
+    linkBox.checked = linked;
+    linkHint.hidden = linked || !relinkOverwritesPalette(state);
     rimChips.sync(state);
     syncGarnish(state);
   }
