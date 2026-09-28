@@ -33,7 +33,9 @@ export function createModeNav({ panel, pinnedTop }) {
 
   let active = null;
   function show(section) {
-    active = sections.has(section) ? section : null;
+    const next = sections.has(section) ? section : null;
+    const switched = next !== active; // re-showing the open mode (e.g. selecting another item in it) keeps the scroll
+    active = next;
     for (const [key, details] of sections) {
       if (!details) continue;
       const on = key === active;
@@ -42,7 +44,7 @@ export function createModeNav({ panel, pinnedTop }) {
     }
     for (const [key, b] of buttons) b.setAttribute("aria-selected", String(key === active));
     empty.hidden = active !== null;
-    if (active) scroll.scrollTop = 0;
+    if (active && switched) scroll.scrollTop = 0;
   }
   function toggle(section) {
     show(active === section ? null : section);
