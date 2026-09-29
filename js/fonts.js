@@ -14,7 +14,7 @@ export const FONTS = {
   mulgyeol: { label: "학교안심 물결", families: ["TDAD Mulgyeol"], weights: ["regular", "bold"], fallback: "sans-serif" },
   moirai: { label: "Moirai One (컬러 폰트)", families: ["TDAD Moirai"], color: true, fallback: "sans-serif" },
   // Pixel emoji only in this stack (never appended globally).
-  mona: { label: "Mona12 (도트)", families: ["TDAD Mona", "TDAD Mona Emoji"], weights: ["regular", "bold"], fallback: "ui-monospace, Consolas, monospace" },
+    mona: { label: "Mona12 (도트)", families: ["TDAD Mona", "TDAD Test Color Emoji", "TDAD Mona Emoji"], weights: ["regular", "bold"], fallback: "ui-monospace, Consolas, monospace" },
   ahnchangho: { label: "KCC 안창호체", families: ["TDAD Ahnchangho"], fallback: "serif" },
 };
 
