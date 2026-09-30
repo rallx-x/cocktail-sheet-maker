@@ -1,4 +1,5 @@
 import { el, rangeRow } from "../ui/controls.js";
+import { createRelativeSizeRow } from "./relative-size.js";
 import {
   defaultCharacterPlacement,
   fillCharacterPlacement,
@@ -18,19 +19,30 @@ export function createMdViewportPanel(host, { getState, updateState, getAdapter 
   const fillButton = el("button", { class: "reseed-button", type: "button", text: "채우기" });
   const resetButton = el("button", { class: "reseed-button", type: "button", text: "처음으로" });
   const buttons = el("div", { class: "button-row md-viewport-actions" }, fitButton, fillButton, resetButton);
+  // v17.1: size as a relative view of character.width — 100% = the current Fit width (discoverable right
+  // under 맞추기 / 채우기; order: Fit / Fill → size → position)
+  const sizeRow = createRelativeSizeRow({
+    getState,
+    updateState,
+    get: (s) => md(s).character,
+    reference: (s) => {
+      const c = md(s).character;
+      return c.asset ? fitCharacterPlacement(c.asset, s.design.width, s.design.height, viewportOf(md(s))).width : null;
+    },
+  });
   const xRow = rangeRow("좌우 위치", { min: -50, max: 150, step: 1 });
   const yRow = rangeRow("위아래 위치", { min: -50, max: 200, step: 1 });
   const clipInput = el("input", { type: "checkbox" });
   const clipRow = el("label", { class: "check-row" }, clipInput, el("span", { text: "프레임 밖으로 나간 부분 잘라내기" }));
   const hint = el("p", {
     class: "hint",
-    text: "맞추기: 그림 전체가 점선 영역 안에 들어가요. 채우기: 점선 영역을 꽉 채우고 넘치는 부분은 잘려요. 잘라내기를 켜면 캐릭터가 MD 배경 프레임 모양 안에서만 보여요(프레임을 끄면 점선 영역 기준). 위치는 점선 영역 기준 %예요(50 = 가운데, 위아래는 발 위치).",
+    text: "맞추기: 그림 전체가 점선 영역 안에 들어가요. 채우기: 점선 영역을 꽉 채우고 넘치는 부분은 잘려요. 잘라내기를 켜면 캐릭터가 MD 배경 프레임 모양 안에서만 보여요(프레임을 끄면 점선 영역 기준). 크기는 맞추기 크기가 100%예요(그림 가운데 기준으로 커져요). 위치는 점선 영역 기준 %예요(50 = 가운데, 위아래는 발 위치).",
   });
   const details = el(
     "details",
     { class: "subsection md-viewport-panel", open: true },
     el("summary", { text: "MD 영역 안 배치" }),
-    el("div", { class: "subsection-body" }, buttons, xRow.row, yRow.row, clipRow, hint),
+    el("div", { class: "subsection-body" }, buttons, sizeRow.row, xRow.row, yRow.row, clipRow, hint),
   );
   host.after(details);
 
@@ -89,6 +101,7 @@ export function createMdViewportPanel(host, { getState, updateState, getAdapter 
       syncPos(xRow, on ? toUiX(state) : 0, on);
       syncPos(yRow, on ? toUiY(state) : 0, on);
       clipInput.checked = viewportOf(md(state)).clip;
+      sizeRow.sync(state);
     },
   };
 }

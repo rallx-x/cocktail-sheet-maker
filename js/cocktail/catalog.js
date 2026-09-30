@@ -1,9 +1,8 @@
-// ⚠ UNFROZEN TEST DATA — NOT the production catalog. (v17 development only)
-// Generated from cocktail-catalog-draft.json (80 entries; the 2 IDENTITY_UNCLEAR entries are excluded).
-// Jamong + the user are still verifying every entry; the production catalog replaces this file after the
-// one-batch freeze (then CATALOG_FROZEN = true). The renderer never reads this file: Random Cocktail copies
+// Production cocktail catalog — FROZEN (v17). 80 entries, approved by the user + Jamong on 2026-09-30.
+// Source priority: tipsy-app.com → Masileng → a credible fallback; one complete recipe from one page per entry.
+// Change entries only as a reviewed batch. The renderer never reads this file: Random Cocktail copies
 // an entry into ordinary editable state once (one undo step).
-export const CATALOG_FROZEN = false;
+export const CATALOG_FROZEN = true;
 export const CATALOG = [
 {
 "id": "pink-lady",
@@ -865,6 +864,97 @@ export const CATALOG = [
 },
 "memo": "",
 "source": "https://tipsy-app.com/cocktails/shark-bite"
+},
+{
+"id": "bob-marley",
+"name": "Bob Marley",
+"nameKo": "밥 말리",
+"colorFamilies": [
+"red",
+"yellow",
+"green"
+],
+"recipe": {
+"ingredients": [
+{
+"name": "Grenadine",
+"qty": 1,
+"unit": "oz"
+},
+{
+"name": "Banana Liqueur",
+"qty": 1,
+"unit": "oz"
+},
+{
+"name": "Pineapple Juice",
+"qty": 1,
+"unit": "oz"
+},
+{
+"name": "Overproof Rum",
+"qty": 1,
+"unit": "oz"
+},
+{
+"name": "Blue Curaçao",
+"qty": 1,
+"unit": "oz"
+}
+],
+"garnish": [
+"Pineapple Wedge",
+"Pineapple Leaves",
+"Maraschino Cherries"
+]
+},
+"visual": {
+"glass": {
+"preset": "tulip",
+"height": 1.0
+},
+"liquid": {
+"level": 0.8,
+"blend": "layers",
+"stops": [
+{
+"color": "#C92D36",
+"pos": 0
+},
+{
+"color": "#E9C52F",
+"pos": 0.4
+},
+{
+"color": "#2D8D50",
+"pos": 0.75
+}
+]
+},
+"ice": {
+"type": "cubes",
+"count": 4
+},
+"rim": {
+"type": "none"
+},
+"garnish": [
+{
+"char": "🍍",
+"u": 0.8,
+"size": "M",
+"rotation": -15
+},
+{
+"char": "🍒",
+"u": 0.22,
+"size": "S",
+"rotation": 15
+}
+]
+},
+"memo": "",
+"source": "https://tipsy-app.com/cocktails/bob-marley"
 },
 {
 "id": "bramble",
@@ -3035,6 +3125,73 @@ export const CATALOG = [
 },
 "memo": "",
 "source": "https://tipsy-app.com/cocktails/fruit-tingle"
+},
+{
+"id": "jellyfish-shot",
+"name": "Jellyfish Shot",
+"nameKo": "젤리피시",
+"colorFamilies": [
+"brown",
+"white"
+],
+"recipe": {
+"ingredients": [
+{
+"name": "Crème de Cacao",
+"qty": 0.5,
+"unit": "oz"
+},
+{
+"name": "Amaretto",
+"qty": 0.5,
+"unit": "oz"
+},
+{
+"name": "Irish Cream",
+"qty": 0.5,
+"unit": "oz"
+},
+{
+"name": "Grenadine",
+"qty": 3,
+"unit": "drop"
+}
+],
+"garnish": []
+},
+"visual": {
+"glass": {
+"preset": "shot",
+"height": 1.0
+},
+"liquid": {
+"level": 0.85,
+"blend": "layers",
+"stops": [
+{
+"color": "#F1EDE4",
+"pos": 0
+},
+{
+"color": "#C98A3A",
+"pos": 0.35
+},
+{
+"color": "#E8DCC6",
+"pos": 0.7
+}
+]
+},
+"ice": {
+"type": "none"
+},
+"rim": {
+"type": "none"
+},
+"garnish": []
+},
+"memo": "",
+"source": "https://tipsy-app.com/cocktails/jellyfish-shot"
 },
 {
 "id": "aviation",

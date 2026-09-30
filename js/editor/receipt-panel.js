@@ -15,6 +15,28 @@ const group = (title, open, ...children) =>
 let sectionNumber = 1;
 const sectionId = () => `sec-${Date.now().toString(36)}-${(sectionNumber++).toString(36)}`;
 
+// List-row values: purely numeric input follows 1–99 (max two digits, no 0; a leading zero is dropped);
+// any other text stays free text. Editor input only — load normalization never rewrites stored values.
+export const RECEIPT_VALUE_RANGE = { min: 1, max: 99 };
+export function checkRowValue(raw) {
+  const t = raw.trim();
+  if (!/^\d+$/.test(t)) return { ok: true, value: raw.slice(0, RECEIPT_LIMITS.value) };
+  const n = Number(t);
+  if (t.length > 2 || n < RECEIPT_VALUE_RANGE.min || n > RECEIPT_VALUE_RANGE.max) return { ok: false };
+  return { ok: true, value: String(n) };
+}
+export const randomRowValue = (rnd = Math.random) => String(RECEIPT_VALUE_RANGE.min + Math.floor(rnd() * RECEIPT_VALUE_RANGE.max));
+// Track duration: exactly three digits → m:ss (seconds 00–59); 1–2 digits are kept while typing;
+// anything else (with ":" or other text) stays free text, as before. Same string field, no second model.
+export function checkDuration(raw) {
+  // a digit typed right after a live conversion ("3:14" + "0" = "3:140") → back to the plain digits
+  // the user actually typed ("3140"), which is free text like any other 4-digit entry
+  if (/^\d:\d{3}$/.test(raw)) return { ok: true, value: raw.replace(":", ""), formatted: true };
+  if (!/^\d{3}$/.test(raw)) return { ok: true, value: raw.slice(0, RECEIPT_LIMITS.value), formatted: false };
+  if (Number(raw.slice(1)) > 59) return { ok: false };
+  return { ok: true, value: `${raw[0]}:${raw.slice(1)}`, formatted: true };
+}
+
 export function createReceiptPanel(container, { getState, updateState, select }) {
   const R = (s) => s.components.receipt;
   const set = (mutate) => updateState((d) => mutate(R(d)));
@@ -153,12 +175,29 @@ export function createReceiptPanel(container, { getState, updateState, select })
           btn("✕", "섹션 지우기", () => set((r) => r.sections.splice(si, 1))),
         );
         const isPlaylist = section.kind === "playlist";
+        const notice = el("p", { class: "notice", hidden: true });
         const cap = isPlaylist ? RECEIPT_LIMITS.playlist : RECEIPT_LIMITS.items;
         const rows = section.items.map((item, ii) => {
           const moveItem = (to) => set((r) => r.sections[si].items.splice(to, 0, r.sections[si].items.splice(ii, 1)[0]));
           const field = (key, max, placeholder, cls) => {
             const input = el("input", { class: cls, type: "text", maxlength: String(max), value: item[key], placeholder, "aria-label": placeholder });
-            input.addEventListener("input", (e) => set((r) => (r.sections[si].items[ii][key] = e.target.value.slice(0, max))));
+            const check = key === "value" ? checkRowValue : key === "duration" ? checkDuration : null;
+            if (!check) {
+              input.addEventListener("input", (e) => set((r) => (r.sections[si].items[ii][key] = e.target.value.slice(0, max))));
+              return input;
+            }
+            input.addEventListener("input", (e) => {
+              const res = check(e.target.value);
+              notice.hidden = res.ok;
+              notice.textContent = res.ok ? "" : key === "value" ? STRINGS.receiptValueRange : STRINGS.durationSeconds;
+              if (!res.ok) return; // rejected: nothing stored; blur restores the last valid value
+              if (res.formatted) e.target.value = res.value;
+              set((r) => (r.sections[si].items[ii][key] = res.value));
+            });
+            input.addEventListener("blur", (e) => {
+              e.target.value = R(getState()).sections[si]?.items[ii]?.[key] ?? "";
+              notice.hidden = true;
+            });
             return input;
           };
           const fields = isPlaylist
@@ -178,7 +217,18 @@ export function createReceiptPanel(container, { getState, updateState, select })
         add.addEventListener("click", () =>
           set((r) => r.sections[si].items.push(isPlaylist ? { artist: "", song: "", duration: "" } : { text: "", value: "" })),
         );
-        return el("div", { class: "receipt-section" }, head, ...rows, add);
+        // 🎲 fills every row of this list section with 1–99 — generated once here, stored, one undo step.
+        // Music (playlist) sections never take part.
+        let dice = null;
+        if (!isPlaylist) {
+          dice = el("button", { class: "small", type: "button", text: "🎲 수량 랜덤" });
+          dice.disabled = section.items.length === 0;
+          dice.addEventListener("click", () => {
+            const values = R(getState()).sections[si].items.map(() => randomRowValue());
+            set((r) => r.sections[si].items.forEach((it, k) => (it.value = values[k])));
+          });
+        }
+        return el("div", { class: "receipt-section" }, head, ...rows, notice, add, ...(dice ? [dice] : []));
       }),
     );
   }

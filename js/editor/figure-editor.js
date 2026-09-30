@@ -24,6 +24,7 @@ import { createAdapters } from "./adapters.js";
 import { createInteraction } from "./interaction.js";
 import { createPlatePanel } from "./plate-panel.js";
 import { createMdViewportPanel } from "./md-viewport-panel.js";
+import { createRelativeSizeRow } from "./relative-size.js";
 
 // MD + SD editing: one interaction controller (pointer / wheel / selection) plus one panel
 // binder per section. Editor-only state (selection, remembered plate) is never saved.
@@ -290,6 +291,18 @@ export function createFigureEditor({ getState, updateState, getPreviewScale, rep
     get: (s) => sd(s).character,
     place: (asset, draft) => defaultSdCharacterPlacement(asset, sd(draft).doily, draft.design.width, draft.design.height),
   });
+  // v17.1: SD 캐릭터 크기, a relative view of sd.character.width — 100% = the default placement size
+  const sdSize = createRelativeSizeRow({
+    getState,
+    updateState,
+    label: "캐릭터 크기",
+    get: (s) => sd(s).character,
+    reference: (s) => {
+      const c = sd(s).character;
+      return c.asset ? defaultSdCharacterPlacement(c.asset, sd(s).doily, s.design.width, s.design.height).width : null;
+    },
+  });
+  $("#sdCharacterName").after(sdSize.row);
   const sdControls = bindFigureControls({
     section: "sd",
     buttons: { "sd.character": $("#targetSd"), "sd.doily": $("#targetDoily"), "sd.tray": $("#targetTray") },
@@ -313,6 +326,7 @@ export function createFigureEditor({ getState, updateState, getPreviewScale, rep
   function sync(state) {
     syncCharacterRow(md(state).character, { name: $("#characterName"), upload: $("#characterUploadLabel"), remove: $("#characterRemoveButton") });
     syncCharacterRow(sd(state).character, { name: $("#sdCharacterName"), upload: $("#sdCharacterUploadLabel"), remove: $("#sdCharacterRemoveButton") });
+    sdSize.sync(state);
 
     const coaster = md(state).coaster;
     if (coasterSelect.value !== coasterValue(coaster) || !coasterSelect.options.length) renderCoasterOptions(state);

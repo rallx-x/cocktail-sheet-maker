@@ -54,6 +54,8 @@ export const STRINGS = {
   receiptContentRule: "신청자가 신청서에 직접 적은 내용만 넣어요. 추가금 옵션은 넣지 않아요.",
   receiptPastBoard: "영수증이 판보다 길어졌어요. 항목을 줄이거나 글자 크기, 판 비율을 조절해 주세요.",
   receiptRowsCollide: (rows) => `${rows.join(", ")} 항목이 길어서 오른쪽 값과 겹쳐요.`,
+  receiptValueRange: "숫자는 1~99까지 적을 수 있어요. (글자는 자유롭게 적어도 돼요)",
+  durationSeconds: "초는 00~59로 적어 주세요. (예: 314 → 3:14)",
   anniversaryInvalid: "실제 있는 날짜를 YYYYMMDD 8자리로 적어주세요. (예: 20261001)",
   codeUsesAnniversary: (random) => `지금은 기념일이 표시돼요. 기념일을 지우면 랜덤 번호 ${random}가 나와요.`,
   codeUsesRandom: (random) => `지금 번호: ${random} (다시 뽑기를 누를 때만 바뀌어요)`,
